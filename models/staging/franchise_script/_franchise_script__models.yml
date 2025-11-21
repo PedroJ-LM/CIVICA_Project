@@ -1,0 +1,186 @@
+version: 2
+
+models:
+  - name: stg_franchise_script__stores
+    description: "Canonicalized stores (consistent types, uppercased enums, time casting)."
+    columns:
+      - name: store_id
+        description: "Natural key of the store."
+        tests: [not_null, unique]
+
+      - name: zone_id
+        description: "Zone foreign key."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__zones')
+              field: zone_id
+
+      - name: store_format
+        description: "Normalized as uppercase."
+        tests:
+          - accepted_values:
+              values: ['FLAGSHIP','MALL','STREET','OUTLET']
+
+      - name: status
+        description: "Store operational status."
+        tests:
+          - accepted_values:
+              values: ['OPEN','REFURBISHMENT']
+
+      - name: opening_time
+        description: "Opening time casted to TIME."
+        tests: [not_null]
+
+      - name: closing_time
+        description: "Closing time casted to TIME."
+        tests: [not_null]
+
+      - name: capacity_per_hour
+        description: "Operational throughput capacity; must be positive."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+
+      - name: floor_area_m2
+        description: "Store floor area in square meters; must be positive."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+
+      - name: gate_count
+        description: "Number of gates; must be >= 1."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 1"
+
+      - name: lat
+        description: "Latitude in decimal degrees."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between -90 and 90"
+
+      - name: lon
+        description: "Longitude in decimal degrees."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between -180 and 180"
+
+  - name: stg_franchise_script__zones
+    description: "Canonicalized zones (types, coords). unemployment_rate_pct kept as 0–100."
+    columns:
+      - name: zone_id
+        tests: [not_null, unique]
+      - name: zone_name
+      - name: lat
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between -90 and 90"
+      - name: lon
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between -180 and 180"
+      - name: population
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: income_index
+      - name: unemployment_rate_pct
+        description: "Unemployment in percent (0–100), renamed with _pct."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 100"
+
+  - name: stg_franchise_script__store_gates
+    description: "Canonicalized store gates (direction normalized, types set)."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id','gate_id']
+    columns:
+      - name: store_id
+        description: "FK to store."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: gate_id
+        description: "Gate id; unique per store."
+        tests:
+          - not_null
+      - name: gate_name
+        description: "Human-readable name of the gate."
+      - name: direction
+        description: "IN or OUT."
+        tests:
+          - accepted_values:
+              values: ['IN','OUT']
+      - name: technology
+        description: "Sensor technology identifier."
+        # Preferimos no cerrar aquí los valores hasta observar el dataset real; lo validaremos más adelante.
+
+  - name: stg_franchise_script__pos_store_days
+    description: "Daily POS totals per store (DAY, STORE_ID) con nombres canónicos."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id','day']
+    columns:
+      - name: store_id
+        description: "Store natural key."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: day
+        description: "Business day."
+        tests: [not_null]
+      - name: tickets_day
+        description: "Tickets count (from TICKET_COUNT)."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: gross_amount_day
+        description: "Gross amount of day (from TOTAL_AMOUNT)."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: avg_ticket
+        description: "Average ticket amount (from AVG_TICKET_AMOUNT)."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: stg_franchise_script__zone_weather_days
+    description: "Daily weather by zone; TIPADO y labels normalizados."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['zone_id','day']
+    columns:
+      - name: zone_id
+        description: "Zone natural key."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__zones')
+              field: zone_id
+      - name: day
+        description: "Day of observation."
+        tests: [not_null]
+      - name: t_avg_c
+        description: "Average temperature (°C) from TEMP_C."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between -50 and 60"
+      - name: rain_mm
+        description: "Precipitation (mm) from RAINFALL_MM."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: wind_kmh
+        description: "Wind speed (km/h)."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: weather_label
+        description: "Categorical weather label (UPPER)."
