@@ -14,7 +14,8 @@ renamed as (
         cast(gate_id as number)            as gate_id,
         gate_name                           as gate_name,
         upper(cast(direction as string))   as direction,   -- IN / OUT
-        upper(cast(technology as string))  as technology   -- dejamos sin "accepted_values" por ahora
+        upper(cast(technology as string))  as technology,   -- dejamos sin "accepted_values" por ahora
+        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
     from source
 
 )

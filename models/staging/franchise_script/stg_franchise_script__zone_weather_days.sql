@@ -9,7 +9,8 @@ renamed as (
         cast(temp_c as float)                as t_avg_c,      -- TEMP_C → canónico
         cast(rainfall_mm as float)           as rain_mm,      -- RAINFALL_MM → canónico
         cast(wind_kmh as float)              as wind_kmh,     -- WIND_KMH
-        upper(cast(weather_label as string)) as weather_label -- WEATHER_LABEL
+        upper(cast(weather_label as string)) as weather_label, -- WEATHER_LABEL
+        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
     from source
 )
 select * from renamed

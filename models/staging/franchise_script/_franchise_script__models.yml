@@ -66,6 +66,10 @@ models:
           - dbt_utils.expression_is_true:
               expression: "between -180 and 180"
 
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
   - name: stg_franchise_script__zones
     description: "Canonicalized zones (types, coords). unemployment_rate_pct kept as 0–100."
     columns:
@@ -90,6 +94,9 @@ models:
         tests:
           - dbt_utils.expression_is_true:
               expression: "between 0 and 100"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
 
   - name: stg_franchise_script__store_gates
     description: "Canonicalized store gates (direction normalized, types set)."
@@ -118,6 +125,9 @@ models:
       - name: technology
         description: "Sensor technology identifier."
         # Preferimos no cerrar aquí los valores hasta observar el dataset real; lo validaremos más adelante.
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
 
   - name: stg_franchise_script__pos_store_days
     description: "Daily POS totals per store (DAY, STORE_ID) con nombres canónicos."
@@ -150,6 +160,9 @@ models:
         tests:
           - dbt_utils.expression_is_true:
               expression: ">= 0"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
 
   - name: stg_franchise_script__zone_weather_days
     description: "Daily weather by zone; TIPADO y labels normalizados."
@@ -184,3 +197,216 @@ models:
               expression: ">= 0"
       - name: weather_label
         description: "Categorical weather label (UPPER)."
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__entries_5m
+    description: "5-minute entries per gate. Clean types, IN/OUT, derived day & minute_5m_index."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id','gate_id','ts_5m','direction']
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: gate_id
+        tests: [not_null]
+      - name: ts_5m
+        tests: [not_null]
+      - name: direction
+        tests:
+          - accepted_values:
+              values: ['IN','OUT']
+      - name: people_count
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: minute_5m_index
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 287"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__iot_presence_5m
+    description: "5-minute device presence per store. Derived day & minute_5m_index."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id','ts_5m']
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: ts_5m
+        tests: [not_null]
+      - name: devices
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: minute_5m_index
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 287"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__queues_5m
+    description: "5-minute queue metrics per store. Derived day & minute_5m_index."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id','ts_5m']
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: ts_5m
+        tests: [not_null]
+      - name: queue_avg
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: wait_avg_s
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: minute_5m_index
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 287"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__mobility_od_15m
+    description: "Mobility flows O→D cada 15 min. Tipado y derivadas de tiempo."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['origin_zone_id','dest_store_id','ts_15m']
+    columns:
+      - name: origin_zone_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__zones')
+              field: zone_id
+      - name: dest_store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: ts_15m
+        tests: [not_null]
+      - name: arrivals
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: minute_15m_index
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 95"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__staff_shifts
+    description: "Turnos de personal por tienda; roles en UPPER. Grano (staff_id, shift_start)."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['staff_id','shift_start']
+    columns:
+      - name: staff_id
+        tests: [not_null]
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: role
+      - name: shift_start
+        tests: [not_null]
+      - name: shift_end
+        tests: [not_null]
+      - name: register_id
+      - name: day
+        tests: [not_null]
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__inventory_days
+    description: "Stock/ventas/reposiciones diarias por tienda-producto."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id','product_id','day']
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_franchise_script__stores')
+              field: store_id
+      - name: product_id
+        tests: [not_null]
+      - name: day
+        tests: [not_null]
+      - name: stock
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: units_sold
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: units_replenished
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
+  - name: stg_franchise_script__pos_tickets
+    description: "Tickets POS con tipado y derivadas simples (day, duration_sec)."
+    columns:
+      - name: ticket_id
+        tests: [not_null, unique]
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
+      - name: opened_at
+        tests: [not_null]
+      - name: closed_at
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= opened_at"   # closed_at >= opened_at
+      - name: total_amount
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: day
+      - name: duration_sec
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
