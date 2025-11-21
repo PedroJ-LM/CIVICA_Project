@@ -14,7 +14,8 @@ renamed as (
         cast(income_index as float)       as income_index,
 
         -- Mantener en porcentaje 0–100 y renombrar con sufijo _pct
-        try_to_double(unemployment_rate)  as unemployment_rate_pct
+        try_to_double(unemployment_rate)  as unemployment_rate_pct,
+        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
     from source
 )
 select * from renamed

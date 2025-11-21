@@ -14,7 +14,8 @@ renamed as (
         cast(gate_count as number)             as gate_count,
         try_to_time(opening_time)              as opening_time,
         try_to_time(closing_time)              as closing_time,
-        upper(cast(status as string))          as status
+        upper(cast(status as string))          as status,
+        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
     from source
 )
 select * from renamed
