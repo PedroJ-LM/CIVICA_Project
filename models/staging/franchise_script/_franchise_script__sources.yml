@@ -1,0 +1,68 @@
+version: 2
+
+sources:
+  - name: franchise_script
+    description: >
+      Bronze schema with franchise raw tables loaded from Snowflake internal stage.
+      Single source system; each staging model is 1:1 with these tables.
+    database: "{{ env_var('DBT_ENVIRONMENTS') }}_BRONZE_DB"
+    schema: franchise_script
+    loader: "internal_stage_copy"
+
+    tables:
+      - name: ZONES
+        description: "Population and socio-economic attributes by zone."
+        columns:
+          - name: zone_id
+            tests: [not_null, unique]
+
+      - name: STORES
+        description: "Store master data: format, capacity, opening hours, location."
+        columns:
+          - name: store_id
+            tests: [not_null, unique]
+          - name: zone_id
+            tests: [not_null]
+
+      - name: STORE_GATES
+        description: "Store entrances/exits inventory with direction and technology."
+        columns:
+          - name: store_id
+            tests: [not_null]
+          - name: gate_id
+            tests: [not_null]
+
+      - name: ZONE_WEATHER_DAYS
+        description: "Daily weather by zone."
+        loaded_at_field: day
+
+      - name: POS_STORE_DAYS
+        description: "Daily POS totals by store."
+        loaded_at_field: day
+
+      - name: ENTRIES_5M
+        description: "5-minute gate entries/exits."
+        loaded_at_field: window_5m
+
+      - name: IOT_PRESENCE_5M
+        description: "5-minute device presence (people density proxy)."
+        loaded_at_field: ts
+
+      - name: QUEUES_5M
+        description: "5-minute queue KPIs per store."
+        loaded_at_field: window_5m
+
+      - name: POS_TICKETS
+        description: "Ticket-level POS data with open/close timestamps."
+        loaded_at_field: closed_at
+
+      - name: MOBILITY_OD_15M
+        description: "15-minute arrivals from origin zone to destination store."
+        loaded_at_field: ts
+
+      - name: STAFF_SHIFTS
+        description: "Staff shifts per store/day."
+
+      - name: INVENTORY_DAYS
+        description: "Daily inventory & movements per store/product."
+        loaded_at_field: day
