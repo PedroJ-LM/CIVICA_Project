@@ -44,9 +44,9 @@ models:
     #   +database: "{{ env_var('DBT_ENVIRONMENTS') }}_GOLD_DB"
     #   # +schema: ... (si no usas Custom schema en Cloud)
 
-#seeds:
-#  +database: "{{ env_var('DBT_ENVIRONMENTS') }}_BRONZE_DB"
-#  +schema: "SEEDS"
+seeds:
+  +database: "{{ env_var('DBT_ENVIRONMENTS') }}_BRONZE_DB"
+  +schema: "SEEDS"
 
 #snapshots:
 #  +transient: false

@@ -88,11 +88,14 @@ models:
       tests: [not_null]
 
   - name: stg_franchise_script__zones
-    description: "Canonicalized zones (types, coords). unemployment_rate_pct kept as 0–100."
+    description: "Canonicalized zones (types, coords) with cleaned names (without #n) and typed attributes."
     columns:
       - name: zone_id
         tests: [not_null, unique]
       - name: zone_name
+        description: "Zone name cleaned (without the '#<n>' suffix), uppercased."
+        tests:
+          - not_null
       - name: lat
         tests:
           - dbt_utils.expression_is_true:
@@ -427,6 +430,7 @@ models:
     columns:
       - name: ticket_id
         tests: [not_null, unique]
+
       - name: store_id
         tests:
           - not_null
@@ -434,17 +438,23 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: opened_at
         tests: [not_null]
+
       - name: closed_at
         tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: ">= opened_at"   # closed_at >= opened_at
+              arguments:
+                expression: ">= opened_at"   # closed_at >= opened_at
+
       - name: total_amount
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: channel_id
         description: "Catalog ID for sales channel."
         tests:
@@ -452,21 +462,33 @@ models:
               arguments:
                 to: ref('stg_franchise_script__channels')
                 field: channel_id
-      - name: promo_id
-        description: "Catalog ID for promo code (nullable)."
+
+      - name: promo_code
+        description: "Normalized promo code; 'NO_PROMO' when there was no promo in the source."
         tests:
+          - not_null
+
+      - name: promo_id
+        description: "Catalog ID for promo code (includes NO_PROMO for tickets without promo)."
+        tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('stg_franchise_script__promos')
                 field: promo_id
+
       - name: day
+
       - name: duration_sec
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   # ======================
   # CATALOG STAGING (distinct normalized domains)
@@ -513,7 +535,7 @@ models:
         tests: [not_null, unique]
 
   - name: stg_franchise_script__promos
-    description: "Catalog of promo codes (distinct non-null codes)."
+    description: "Catalog of promo codes (distinct non-null codes, including NO_PROMO)."
     columns:
       - name: promo_id
         tests: [not_null, unique]
@@ -527,3 +549,35 @@ models:
         tests: [not_null, unique]
       - name: weather_label
         tests: [not_null, unique]
+
+  - name: stg_franchise_script__regions
+    description: "Regions (comunidades autónomas) derived from the zones hierarchy seed."
+    columns:
+      - name: region_id
+        description: "Surrogate key of the region (MD5 over region_name)."
+        tests: [not_null, unique]
+
+      - name: region_name
+        description: "Nombre de la comunidad autónoma."
+        tests: [not_null, unique]
+
+      - name: country_id
+        description: "FK to stg_franchise_script__countries."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
+  - name: stg_franchise_script__countries
+    description: "Countries derived from the zones hierarchy seed."
+    columns:
+      - name: country_id
+        description: "Surrogate key of the country (MD5 over country_name)."
+        tests: [not_null, unique]
+
+      - name: country_name
+        description: "Country name (uppercased, normalized)."
+        tests: [not_null, unique]
+
