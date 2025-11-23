@@ -139,3 +139,23 @@ models:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ["zone_id", "day"]
 
+  - name: base_franchise_script__zones_hierarchy
+    description: "Typed and normalized view over the zones hierarchy seed (zone -> region -> country)."
+    columns:
+      - name: zone_name_clean
+        description: "Canonical zone name used to join with stg_franchise_script__zones.zone_name."
+        tests:
+          - not_null
+          - unique
+
+      - name: region_name
+        description: "Nombre normalizado de la comunidad autónoma (región)."
+        tests:
+          - not_null
+
+      - name: country_name
+        description: "Nombre normalizado del país."
+        tests:
+          - not_null
+
+
