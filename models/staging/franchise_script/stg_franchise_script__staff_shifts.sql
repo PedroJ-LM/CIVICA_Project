@@ -1,19 +1,23 @@
--- Grain: 1 row = (staff_id, shift_start)  (no agregamos; 1:1 con el source)
--- Staging: tipado + normalización mínima. Sin joins/agg.
+-- Grain: (staff_id, shift_start)
+-- Normaliza role_name → role_id (hash). Sin joins.
 
-with source as (
-    select * from {{ source('franchise_script', 'STAFF_SHIFTS') }}
-),
-renamed as (
-    select
-        cast(staff_id as number)            as staff_id,
-        cast(store_id as number)            as store_id,
-        upper(cast(role as string))         as role,
-        cast(shift_start as timestamp)      as shift_start,
-        cast(shift_end as timestamp)        as shift_end,
-        cast(register_id as number)         as register_id,   -- si tu Bronze usa otro nombre (p.ej. till_id), ajusta aquí
-        cast(shift_start as date)           as day,
-        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
-    from source
+with b as (
+  select *
+  from {{ ref('base_franchise_script__staff_shifts') }}
 )
-select * from renamed
+
+select
+  staff_id,
+  store_id,
+  -- si hay texto -> id; si no hay -> null
+  iff(role_name is null or trim(role_name) = '',
+      null,
+      to_varchar(md5(upper(trim(role_name))))
+  ) as role_id,
+  shift_start,
+  shift_end,
+  register_id,
+  date_load_utc,
+  _fivetran_deleted
+from b
+

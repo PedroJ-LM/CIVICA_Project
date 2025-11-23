@@ -1,3 +1,141 @@
 version: 2
-models: []
+
+models:
+
+  - name: base_franchise_script__staff_shifts
+    description: "Base table for staff shifts (1:1 with source STAFF_SHIFTS). Casting and date_load_utc only. Grain: (staff_id, shift_start)."
+    columns:
+      - name: staff_id
+        description: "Natural identifier of the employee."
+        tests: [not_null]
+      - name: store_id
+        description: "Store where the shift took place."
+        tests: [not_null]
+      - name: role_name
+        description: "Role name (later normalized to role_id in staging)."
+      - name: shift_start
+        description: "Shift start timestamp."
+        tests: [not_null]
+      - name: shift_end
+        description: "Shift end timestamp."
+      - name: register_id
+        description: "Cash register assigned during the shift."
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+      - name: _fivetran_deleted
+        description: "Soft delete flag; null in our synthetic data."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ["staff_id", "shift_start"]
+
+  - name: base_franchise_script__stores
+    description: "Base table for stores (1:1 with source STORES). Casting and date_load_utc only. Grain: store_id."
+    columns:
+      - name: store_id
+        description: "Store identifier."
+        tests: [not_null, unique]
+      - name: store_name
+        description: "Official store name."
+      - name: zone_id
+        description: "Zone identifier."
+        tests: [not_null]
+      - name: lat
+        description: "Latitude."
+      - name: lon
+        description: "Longitude."
+      - name: capacity_per_hour
+        description: "Operational capacity per hour."
+      - name: store_format
+        description: "Textual store format (normalized to store_format_id in staging)."
+      - name: floor_area_m2
+        description: "Store floor area in square meters."
+      - name: gate_count
+        description: "Number of entrances."
+      - name: opening_time
+        description: "Opening time."
+      - name: closing_time
+        description: "Closing time."
+      - name: status
+        description: "Operational status (normalized to store_status_id in staging)."
+      - name: date_load_utc
+        description: "UTC load timestamp."
+        tests: [not_null]
+      - name: _fivetran_deleted
+        description: "Soft delete flag; null in our synthetic data."
+
+  - name: base_franchise_script__pos_tickets
+    description: "Base table for POS tickets (1:1 with source POS_TICKETS). Casting and date_load_utc only. Grain: ticket_id."
+    columns:
+      - name: ticket_id
+        description: "Ticket identifier."
+        tests: [not_null, unique]
+      - name: store_id
+        description: "Store where the transaction occurred."
+        tests: [not_null]
+      - name: opened_at
+        description: "Ticket open timestamp."
+      - name: closed_at
+        description: "Ticket close timestamp."
+      - name: channel
+        description: "Textual channel (normalized to channel_id in staging)."
+      - name: promo_code
+        description: "Textual promotion code (normalized to promo_id in staging)."
+      - name: total_amount
+        description: "Total amount of the ticket."
+      - name: date_load_utc
+        description: "UTC load timestamp."
+        tests: [not_null]
+      - name: _fivetran_deleted
+        description: "Soft delete flag; null in our synthetic data."
+
+  - name: base_franchise_script__store_gates
+    description: "Base table for store gates (1:1 with source STORE_GATES). Casting and date_load_utc only. Grain: (store_id, gate_id)."
+    columns:
+      - name: store_id
+        description: "Store identifier."
+        tests: [not_null]
+      - name: gate_id
+        description: "Gate identifier within the store."
+        tests: [not_null]
+      - name: gate_name
+        description: "Gate name."
+      - name: direction
+        description: "Textual direction (normalized to direction_id in staging)."
+      - name: technology
+        description: "Sensor/entrance technology."
+      - name: date_load_utc
+        description: "UTC load timestamp."
+        tests: [not_null]
+      - name: _fivetran_deleted
+        description: "Soft delete flag; null in our synthetic data."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ["store_id", "gate_id"]
+
+  - name: base_franchise_script__zone_weather_days
+    description: "Base table for daily weather by zone (1:1 with source ZONE_WEATHER_DAYS). Casting and date_load_utc only. Grain: (zone_id, day)."
+    columns:
+      - name: zone_id
+        description: "Zone identifier."
+        tests: [not_null]
+      - name: day
+        description: "Date."
+        tests: [not_null]
+      - name: temp_c
+        description: "Average temperature (°C)."
+      - name: rainfall_mm
+        description: "Rainfall (mm)."
+      - name: wind_kmh
+        description: "Wind (km/h)."
+      - name: weather_label
+        description: "Textual weather label (normalized to weather_label_id in staging)."
+      - name: date_load_utc
+        description: "UTC load timestamp."
+        tests: [not_null]
+      - name: _fivetran_deleted
+        description: "Soft delete flag; null in our synthetic data."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ["zone_id", "day"]
 

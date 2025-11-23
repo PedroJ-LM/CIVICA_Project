@@ -1,16 +1,19 @@
--- Grano: 1 fila = (zone_id, day). Staging sin joins/agg.
-with source as (
-    select * from {{ source('franchise_script', 'ZONE_WEATHER_DAYS') }}
+with base as (
+  select *
+  from {{ ref('base_franchise_script__zone_weather_days') }}
 ),
-renamed as (
-    select
-        cast(zone_id as number)              as zone_id,      -- ZONE_ID (NUMBER)
-        cast(day as date)                    as day,          -- DAY (DATE)
-        cast(temp_c as float)                as t_avg_c,      -- TEMP_C → canónico
-        cast(rainfall_mm as float)           as rain_mm,      -- RAINFALL_MM → canónico
-        cast(wind_kmh as float)              as wind_kmh,     -- WIND_KMH
-        upper(cast(weather_label as string)) as weather_label, -- WEATHER_LABEL
-        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
-    from source
+final as (
+  select
+    zone_id,
+    day,
+    temp_c       as t_avg_c,
+    rainfall_mm  as rain_mm,
+    wind_kmh,
+    md5(upper(trim(weather_label))) as weather_label_id,
+    date_load_utc,
+    _fivetran_deleted
+  from base
 )
-select * from renamed
+select * from final
+
+
