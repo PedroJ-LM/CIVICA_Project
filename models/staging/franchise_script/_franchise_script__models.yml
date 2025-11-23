@@ -1,74 +1,91 @@
 version: 2
 
 models:
-  - name: stg_franchise_script__stores
-    description: "Canonicalized stores (consistent types, uppercased enums, time casting)."
-    columns:
-      - name: store_id
-        description: "Natural key of the store."
-        tests: [not_null, unique]
 
-      - name: zone_id
-        description: "Zone foreign key."
-        tests:
-          - not_null
-          - relationships:
+  # ======================
+  # MAIN ENTITIES (now referencing catalog IDs)
+  # ======================
+
+  - name: stg_franchise_script__stores
+    description: "Canonicalized stores; format/status normalized via IDs; consistent types and coords."
+    columns:
+    - name: store_id
+      description: "Natural key of the store."
+      tests: [not_null, unique]
+
+    - name: zone_id
+      description: "Zone foreign key."
+      tests:
+        - not_null
+        - relationships:
+            arguments:
               to: ref('stg_franchise_script__zones')
               field: zone_id
 
-      - name: store_format
-        description: "Normalized as uppercase."
-        tests:
-          - accepted_values:
-              values: ['FLAGSHIP','MALL','STREET','OUTLET']
+    - name: store_format_id
+      description: "Catalog ID for store format."
+      tests:
+        - not_null
+        - relationships:
+            arguments:
+              to: ref('stg_franchise_script__store_formats')
+              field: store_format_id
 
-      - name: status
-        description: "Store operational status."
-        tests:
-          - accepted_values:
-              values: ['OPEN','REFURBISHMENT']
+    - name: store_status_id
+      description: "Catalog ID for store status."
+      tests:
+        - not_null
+        - relationships:
+            arguments:
+              to: ref('stg_franchise_script__store_status')
+              field: store_status_id
 
-      - name: opening_time
-        description: "Opening time casted to TIME."
-        tests: [not_null]
+    - name: opening_time
+      description: "Opening time cast to TIME."
+      tests: [not_null]
 
-      - name: closing_time
-        description: "Closing time casted to TIME."
-        tests: [not_null]
+    - name: closing_time
+      description: "Closing time cast to TIME."
+      tests: [not_null]
 
-      - name: capacity_per_hour
-        description: "Operational throughput capacity; must be positive."
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "> 0"
+    - name: capacity_per_hour
+      description: "Operational throughput capacity; must be positive."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: ">= 0"
 
-      - name: floor_area_m2
-        description: "Store floor area in square meters; must be positive."
-        tests:
-          - dbt_utils.expression_is_true:
-              expression: "> 0"
+    - name: floor_area_m2
+      description: "Store floor area in square meters; must be positive."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: ">= 0"
 
-      - name: gate_count
-        description: "Number of gates; must be >= 1."
-        tests:
-          - dbt_utils.expression_is_true:
+    - name: gate_count
+      description: "Number of gates; must be >= 1."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
               expression: ">= 1"
 
-      - name: lat
-        description: "Latitude in decimal degrees."
-        tests:
-          - dbt_utils.expression_is_true:
+    - name: lat
+      description: "Latitude in decimal degrees."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
               expression: "between -90 and 90"
 
-      - name: lon
-        description: "Longitude in decimal degrees."
-        tests:
-          - dbt_utils.expression_is_true:
+    - name: lon
+      description: "Longitude in decimal degrees."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
               expression: "between -180 and 180"
 
-      - name: date_load_utc
-        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
-        tests: [not_null]
+    - name: date_load_utc
+      description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+      tests: [not_null]
 
   - name: stg_franchise_script__zones
     description: "Canonicalized zones (types, coords). unemployment_rate_pct kept as 0–100."
@@ -99,7 +116,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__store_gates
-    description: "Canonicalized store gates (direction normalized, types set)."
+    description: "Canonicalized store gates; direction normalized to direction_id."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id','gate_id']
@@ -109,28 +126,31 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: gate_id
         description: "Gate id; unique per store."
         tests:
           - not_null
       - name: gate_name
         description: "Human-readable name of the gate."
-      - name: direction
-        description: "IN or OUT."
+      - name: direction_id
+        description: "Catalog ID for direction (IN/OUT)."
         tests:
-          - accepted_values:
-              values: ['IN','OUT']
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__directions')
+                field: direction_id
       - name: technology
         description: "Sensor technology identifier."
-        # Preferimos no cerrar aquí los valores hasta observar el dataset real; lo validaremos más adelante.
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
 
   - name: stg_franchise_script__pos_store_days
-    description: "Daily POS totals per store (DAY, STORE_ID) con nombres canónicos."
+    description: "Daily POS totals per store (DAY, STORE_ID) with canonical names."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id','day']
@@ -140,8 +160,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: day
         description: "Business day."
         tests: [not_null]
@@ -165,7 +186,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__zone_weather_days
-    description: "Daily weather by zone; TIPADO y labels normalizados."
+    description: "Daily weather by zone; types cleaned; label normalized to weather_label_id."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['zone_id','day']
@@ -175,8 +196,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__zones')
-              field: zone_id
+              arguments:
+                to: ref('stg_franchise_script__zones')
+                field: zone_id
       - name: day
         description: "Day of observation."
         tests: [not_null]
@@ -195,32 +217,42 @@ models:
         tests:
           - dbt_utils.expression_is_true:
               expression: ">= 0"
-      - name: weather_label
-        description: "Categorical weather label (UPPER)."
+      - name: weather_label_id
+        description: "Catalog ID for weather label."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__weather_labels')
+                field: weather_label_id
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
 
   - name: stg_franchise_script__entries_5m
-    description: "5-minute entries per gate. Clean types, IN/OUT, derived day & minute_5m_index."
+    description: "5-minute entries per gate. Clean types and derived minute_5m_index."
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: ['store_id','gate_id','ts_5m','direction']
+          combination_of_columns: ['store_id','gate_id','ts_5m','direction_id']
     columns:
       - name: store_id
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: gate_id
         tests: [not_null]
       - name: ts_5m
         tests: [not_null]
-      - name: direction
+      - name: direction_id
         tests:
-          - accepted_values:
-              values: ['IN','OUT']
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__directions')
+                field: direction_id
       - name: people_count
         tests:
           - dbt_utils.expression_is_true:
@@ -234,7 +266,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__iot_presence_5m
-    description: "5-minute device presence per store. Derived day & minute_5m_index."
+    description: "5-minute device presence per store. Derived minute_5m_index."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id','ts_5m']
@@ -243,8 +275,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: ts_5m
         tests: [not_null]
       - name: devices
@@ -260,7 +293,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__queues_5m
-    description: "5-minute queue metrics per store. Derived day & minute_5m_index."
+    description: "5-minute queue metrics per store. Derived minute_5m_index."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id','ts_5m']
@@ -269,8 +302,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: ts_5m
         tests: [not_null]
       - name: queue_avg
@@ -290,7 +324,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__mobility_od_15m
-    description: "Mobility flows O→D cada 15 min. Tipado y derivadas de tiempo."
+    description: "Mobility flows O→D every 15 minutes. Typed and time-derived."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['origin_zone_id','dest_store_id','ts_15m']
@@ -299,14 +333,16 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__zones')
-              field: zone_id
+              arguments:
+                to: ref('stg_franchise_script__zones')
+                field: zone_id
       - name: dest_store_id
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: ts_15m
         tests: [not_null]
       - name: arrivals
@@ -322,7 +358,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__staff_shifts
-    description: "Turnos de personal por tienda; roles en UPPER. Grano (staff_id, shift_start)."
+    description: "Staff shifts per store; role normalized to role_id. Grain (staff_id, shift_start)."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['staff_id','shift_start']
@@ -333,22 +369,28 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
-      - name: role
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
+      - name: role_id
+        description: "Catalog ID for staff role."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__staff_roles')
+                field: role_id
       - name: shift_start
         tests: [not_null]
       - name: shift_end
         tests: [not_null]
       - name: register_id
-      - name: day
-        tests: [not_null]
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
 
   - name: stg_franchise_script__inventory_days
-    description: "Stock/ventas/reposiciones diarias por tienda-producto."
+    description: "Daily stock/sales/replenishments per store-product."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id','product_id','day']
@@ -357,8 +399,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_franchise_script__stores')
-              field: store_id
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
       - name: product_id
         tests: [not_null]
       - name: day
@@ -380,7 +423,7 @@ models:
         tests: [not_null]
 
   - name: stg_franchise_script__pos_tickets
-    description: "Tickets POS con tipado y derivadas simples (day, duration_sec)."
+    description: "POS tickets with typed fields, derived day/duration, and normalized channel/promo IDs."
     columns:
       - name: ticket_id
         tests: [not_null, unique]
@@ -402,6 +445,20 @@ models:
         tests:
           - dbt_utils.expression_is_true:
               expression: ">= 0"
+      - name: channel_id
+        description: "Catalog ID for sales channel."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__channels')
+                field: channel_id
+      - name: promo_id
+        description: "Catalog ID for promo code (nullable)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__promos')
+                field: promo_id
       - name: day
       - name: duration_sec
         tests:
@@ -410,3 +467,63 @@ models:
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
+  # ======================
+  # CATALOG STAGING (distinct normalized domains)
+  # ======================
+
+  - name: stg_franchise_script__store_formats
+    description: "Catalog of store formats (distinct values with deterministic IDs)."
+    columns:
+      - name: store_format_id
+        tests: [not_null, unique]
+      - name: store_format_name
+        tests: [not_null, unique]
+
+  - name: stg_franchise_script__store_status
+    description: "Catalog of store operational statuses."
+    columns:
+      - name: store_status_id
+        tests: [not_null, unique]
+      - name: store_status_name
+        tests: [not_null, unique]
+
+  - name: stg_franchise_script__staff_roles
+    description: "Catalog of staff roles."
+    columns:
+      - name: role_id
+        tests: [not_null, unique]
+      - name: role_name
+        tests: [not_null, unique]
+
+  - name: stg_franchise_script__directions
+    description: "Catalog of gate directions (IN/OUT)."
+    columns:
+      - name: direction_id
+        tests: [not_null, unique]
+      - name: direction_name
+        tests: [not_null, unique]
+
+  - name: stg_franchise_script__channels
+    description: "Catalog of sales channels."
+    columns:
+      - name: channel_id
+        tests: [not_null, unique]
+      - name: channel_name
+        tests: [not_null, unique]
+
+  - name: stg_franchise_script__promos
+    description: "Catalog of promo codes (distinct non-null codes)."
+    columns:
+      - name: promo_id
+        tests: [not_null, unique]
+      - name: promo_code
+        tests: [not_null, unique]
+
+  - name: stg_franchise_script__weather_labels
+    description: "Catalog of weather labels."
+    columns:
+      - name: weather_label_id
+        tests: [not_null, unique]
+      - name: weather_label
+        tests: [not_null, unique]

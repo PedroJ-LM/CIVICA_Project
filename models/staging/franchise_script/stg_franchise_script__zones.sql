@@ -15,7 +15,8 @@ renamed as (
 
         -- Mantener en porcentaje 0–100 y renombrar con sufijo _pct
         try_to_double(unemployment_rate)  as unemployment_rate_pct,
-        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc
+        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc,
+        _fivetran_deleted
     from source
 )
 select * from renamed
