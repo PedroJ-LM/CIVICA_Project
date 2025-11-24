@@ -1,9 +1,17 @@
 -- Grain: (staff_id, shift_start)
--- Normaliza role_name → role_id (hash). Sin joins.
+{{ config(
+    materialized         = 'incremental',
+    incremental_strategy = 'merge',
+    unique_key           = ['staff_id','shift_start'],
+    on_schema_change     = 'sync_all_columns'
+) }}
 
 with b as (
   select *
   from {{ ref('base_franchise_script__staff_shifts') }}
+  {% if is_incremental() %}
+    where date_load_utc > (select max(date_load_utc) from {{ this }})
+  {% endif %}
 )
 
 select

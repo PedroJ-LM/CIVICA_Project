@@ -1,7 +1,15 @@
--- stg_franchise_script__pos_tickets.sql
+{{ config(
+    materialized        = 'incremental',
+    incremental_strategy = 'merge',
+    unique_key          = 'ticket_id',
+    on_schema_change    = 'sync_all_columns'
+) }}
 
 with base as (
   select * from {{ ref('base_franchise_script__pos_tickets') }}
+  {% if is_incremental() %}
+    where date_load_utc > (select max(date_load_utc) from {{ this }})
+  {% endif %}
 ),
 final as (
   select

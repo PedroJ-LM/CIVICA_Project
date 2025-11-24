@@ -1,8 +1,16 @@
 -- Grain: 1 row = (store_id, window_5m)
--- Staging: cast types, derive day/minute_5m_index. No joins/agg.
+{{ config(
+    materialized         = 'incremental',
+    incremental_strategy = 'merge',
+    unique_key           = ['store_id','ts_5m'],
+    on_schema_change     = 'sync_all_columns'
+) }}
 
 with source as (
     select * from {{ source('franchise_script', 'QUEUES_5M') }}
+    {% if is_incremental() %}
+      where date_load_utc > (select max(date_load_utc) from {{ this }})
+    {% endif %}
 ),
 renamed as (
     select

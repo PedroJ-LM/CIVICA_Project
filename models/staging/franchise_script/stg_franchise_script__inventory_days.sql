@@ -1,8 +1,16 @@
 -- Grain: 1 row = (store_id, product_id, day)
--- Staging: tipado y nombres canónicos. Sin joins/agg.
+{{ config(
+    materialized         = 'incremental',
+    incremental_strategy = 'merge',
+    unique_key           = ['store_id','product_id','day'],
+    on_schema_change     = 'sync_all_columns'
+) }}
 
 with source as (
     select * from {{ source('franchise_script', 'INVENTORY_DAYS') }}
+    {% if is_incremental() %}
+      where date_load_utc > (select max(date_load_utc) from {{ this }})
+    {% endif %}
 ),
 renamed as (
     select

@@ -1,8 +1,16 @@
 -- Grain: 1 row = (origin_zone_id, dest_store_id, ts_15m)
--- Staging: tipado y derivadas de tiempo. Sin joins/agg.
+{{ config(
+    materialized         = 'incremental',
+    incremental_strategy = 'merge',
+    unique_key           = ['origin_zone_id','dest_store_id','ts_15m'],
+    on_schema_change     = 'sync_all_columns'
+) }}
 
 with source as (
     select * from {{ source('franchise_script', 'MOBILITY_OD_15M') }}
+    {% if is_incremental() %}
+      where date_load_utc > (select max(date_load_utc) from {{ this }})
+    {% endif %}
 ),
 renamed as (
     select
