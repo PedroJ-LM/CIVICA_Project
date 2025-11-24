@@ -1,8 +1,16 @@
 -- Grain: (store_id, gate_id, ts_5m, direction_id)
--- Staging: tipado, normalización a ID determinista, sin joins ni agregaciones.
+{{ config(
+    materialized         = 'incremental',
+    incremental_strategy = 'merge',
+    unique_key           = ['store_id','gate_id','ts_5m','direction_id'],
+    on_schema_change     = 'sync_all_columns'
+) }}
 
 with source as (
     select * from {{ source('franchise_script','ENTRIES_5M') }}
+    {% if is_incremental() %}
+      where date_load_utc > (select max(date_load_utc) from {{ this }})
+    {% endif %}
 ),
 
 renamed as (
