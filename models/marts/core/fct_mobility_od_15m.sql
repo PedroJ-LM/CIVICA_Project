@@ -1,6 +1,10 @@
-{{ config(materialized = 'table') }}
+{{ config(
+    materialized='incremental',
+    unique_key=['origin_zone_id', 'dest_store_id', 'ts_15m'],
+    on_schema_change='sync_all_columns'
+) }}
 
-with mob as (
+with base as (
   select
     origin_zone_id,
     dest_store_id,
@@ -9,69 +13,72 @@ with mob as (
     minute_15m_index,
     date_load_utc
   from {{ ref('stg_franchise_script__mobility_od_15m') }}
+  {% if is_incremental() %}
+    where cast(ts_15m as date) >
+      (
+        select coalesce(max(date_id), cast('1900-01-01' as date))
+        from {{ this }}
+      )
+  {% endif %}
 ),
 
-z as (
+origin_zone as (
   select
     zone_id,
-    lat,
-    lon,
-    population,
-    income_index
+    lat           as origin_lat,
+    lon           as origin_lon,
+    population    as origin_population
   from {{ ref('dim_zone') }}
 ),
 
-s as (
+dest_store as (
   select
     store_id,
-    lat,
-    lon,
-    floor_area_m2
+    lat                    as dest_lat,
+    lon                    as dest_lon,
+    floor_area_m2          as dest_floor_area_m2,
+    capacity_per_hour      as dest_capacity_per_hour
   from {{ ref('dim_store') }}
 ),
 
-joined as (
+with_geo as (
   select
-    m.origin_zone_id,
-    m.dest_store_id,
-    m.ts_15m,
-    m.minute_15m_index,
-    m.arrivals,
-    m.date_load_utc,
+    b.origin_zone_id,
+    b.dest_store_id,
+    b.ts_15m,
+    b.minute_15m_index,
+    b.arrivals,
+    cast(b.ts_15m as date)              as date_id,
 
-    z.population,
-    z.income_index,
-    s.floor_area_m2,
+    oz.origin_population,
+    ds.dest_floor_area_m2,
+    ds.dest_capacity_per_hour,
 
-    {{ haversine_km('z.lat', 'z.lon', 's.lat', 's.lon') }} as distance_km
-  from mob m
-  join z
-    on m.origin_zone_id = z.zone_id
-  join s
-    on m.dest_store_id = s.store_id
+    {{ distance_haversine_km(
+         'oz.origin_lat',
+         'oz.origin_lon',
+         'ds.dest_lat',
+         'ds.dest_lon'
+       ) }}                            as distance_km
+  from base b
+  join origin_zone oz
+    on b.origin_zone_id = oz.zone_id
+  join dest_store ds
+    on b.dest_store_id = ds.store_id
 ),
 
 final as (
   select
     origin_zone_id,
     dest_store_id,
-    cast(ts_15m as date) as date_id,
+    date_id,
     ts_15m,
     minute_15m_index,
     arrivals,
     distance_km,
-    {{ gravity_potential(
-         'population',
-         'income_index',
-         'floor_area_m2',
-         'distance_km',
-         alpha=1.0,
-         beta=1.0,
-         gamma=2.0
-       ) }} as gravity_score,
-    date_load_utc
-  from joined
+    {{ gravity_score('arrivals', 'distance_km') }} as gravity_score
+
+  from with_geo
 )
 
-select *
-from final
+select * from final
