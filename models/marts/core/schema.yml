@@ -1,0 +1,312 @@
+version: 2
+
+models:
+
+  # ======================
+  # DIMENSIONES
+  # ======================
+
+  - name: dim_date
+    description: "Date dimension built with dbt_date (one row per calendar day)."
+    columns:
+      - name: date_id
+        description: "Primary key of the date dimension (DATE)."
+        tests: [not_null, unique]
+
+      - name: year
+      - name: month
+      - name: day_of_month
+      - name: day_of_week
+      - name: is_weekend
+
+  - name: dim_zone
+    description: "Zones enriched with region and country information."
+    columns:
+      - name: zone_id
+        description: "Zone natural key."
+        tests: [not_null, unique]
+
+      - name: zone_name
+        description: "Canonical zone name (cleaned, uppercased)."
+        tests: [not_null]
+
+      - name: region_id
+        description: "FK to stg_franchise_script__regions."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: country_id
+        description: "FK to stg_franchise_script__countries."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
+  - name: dim_store
+    description: "Stores enriched with zone, region, country, format and status."
+    columns:
+      - name: store_id
+        description: "Store natural key."
+        tests: [not_null, unique]
+
+      - name: store_name
+        description: "Canonical store name."
+
+      - name: zone_id
+        description: "FK to dim_zone."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_id
+
+      - name: region_id
+        description: "Region of the store (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: region_id
+
+      - name: country_id
+        description: "Country of the store (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: country_id
+
+      - name: store_format_id
+        description: "FK to stg_franchise_script__store_formats."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__store_formats')
+                field: store_format_id
+
+      - name: store_status_id
+        description: "FK to stg_franchise_script__store_status."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__store_status')
+                field: store_status_id
+
+
+  - name: dim_channel
+    description: "Sales channels."
+    columns:
+      - name: channel_id
+        description: "Surrogate key of the channel."
+        tests: [not_null, unique]
+
+      - name: channel_name
+        description: "Canonical name of the sales channel."
+        tests: [not_null, unique]
+
+  - name: dim_promo
+    description: "Promo codes (including NO_PROMO for non-promotional tickets)."
+    columns:
+      - name: promo_id
+        description: "Surrogate key of the promo code."
+        tests: [not_null, unique]
+
+      - name: promo_code
+        description: "Canonical promo code."
+        tests: [not_null, unique]
+
+  # ======================
+  # HECHOS
+  # ======================
+
+  - name: fct_store_sales_day
+    description: "Daily sales per store, enriched with zone and weather context."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id', 'date_id']
+    columns:
+      - name: store_id
+        description: "FK to dim_store."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+
+      - name: date_id
+        description: "FK to dim_date."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_id
+
+      - name: zone_id
+        description: "Redundant FK to dim_zone via dim_store (denormalized for convenience)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_id
+
+      - name: tickets_day
+        description: "Number of tickets in the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: gross_amount_day
+        description: "Total sales amount in the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: avg_ticket
+        description: "Average ticket amount in the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: t_avg_c
+        description: "Average temperature in the store zone for that day."
+
+      - name: rain_mm
+        description: "Precipitation in mm."
+
+      - name: wind_kmh
+        description: "Wind speed."
+
+      - name: weather_label_id
+        description: "FK to stg_franchise_script__weather_labels."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__weather_labels')
+                field: weather_label_id
+
+  - name: fct_store_traffic_5m
+    description: "5-minute traffic per store (entries, queues, devices)."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id', 'date_id', 'minute_5m_index']
+    columns:
+      - name: store_id
+        description: "FK to dim_store."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+
+      - name: date_id
+        description: "FK to dim_date (cast of ts_5m)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_id
+
+      - name: minute_5m_index
+        description: "Index of the 5-minute slot in the day (0–287)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 287"
+
+      - name: people_in_count
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: people_out_count
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: queue_avg
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: wait_avg_s
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: devices
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: fct_mobility_od_15m
+    description: "Mobility flows from origin zones to destination stores every 15 minutes, with gravity model score."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['origin_zone_id', 'dest_store_id', 'ts_15m']
+    columns:
+      - name: origin_zone_id
+        description: "FK to dim_zone (origin)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_id
+
+      - name: dest_store_id
+        description: "FK to dim_store (destination store)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+
+      - name: date_id
+        description: "FK to dim_date (cast of ts_15m)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_id
+
+      - name: ts_15m
+        description: "15-minute timestamp of the observation."
+        tests: [not_null]
+
+      - name: arrivals
+        description: "Number of arrivals from origin_zone to dest_store in that 15-minute slot."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: distance_km
+        description: "Distance between zone centroid and store in km."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: gravity_score
+        description: "Gravity-model potential for that OD pair at that time."
