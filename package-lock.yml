@@ -5,4 +5,7 @@ packages:
   - name: elementary
     package: elementary-data/elementary
     version: 0.20.1
-sha1_hash: 20a8a1cc151c7454eee76a9f6a2d144924e0b676
+  - name: dbt_date
+    package: calogica/dbt_date
+    version: 0.10.1
+sha1_hash: fb4ee0d22fc51a2ac0f5b43cfb860bf6e2b5bbd0

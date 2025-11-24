@@ -7,7 +7,7 @@ with source as (
 renamed as (
     select
         cast(zone_id as number)           as zone_id,
-        zone_name                          as zone_name,
+        upper(regexp_replace(trim(zone_name), '\\s*#\\d+$', '')) as zone_name,
         cast(lat as float)                as lat,
         cast(lon as float)                as lon,
         cast(population as number)        as population,
