@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: int_franchise_script__store_traffic_5m.sql
+    description: >
+      Intermediate 5-minute traffic per store, joining entries, queues and IoT
+      into a single grain (store_id, ts_5m). Reusable input for downstream facts.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['store_id', 'ts_5m']
+
+    columns:
+      - name: store_id
+        description: "Store natural key (from staging 5m sources)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__stores')
+                field: store_id
+
+      - name: ts_5m
+        description: "5-minute timestamp of the window."
+        tests:
+          - not_null
+
+      - name: people_in_count
+        description: "Number of people entering the store in that 5-minute window."
+
+      - name: people_out_count
+        description: "Number of people leaving the store in that 5-minute window."
+
+      - name: queue_avg
+        description: "Average queue length in that 5-minute window."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: wait_avg_s
+        description: "Average waiting time (seconds) in that 5-minute window."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: devices
+        description: "Number of detected devices (WiFi/Bluetooth) in that 5-minute window."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
