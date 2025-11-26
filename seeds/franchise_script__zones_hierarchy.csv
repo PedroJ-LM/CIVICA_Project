@@ -1,10 +1,17 @@
 zone_name_clean,region_name,country_name
 CENTRO,Comunidad de Madrid,España
-LAGOS,Extremadura,España
-RIBERA,Andalucía,España
-PUERTA NORTE,Castilla-La Mancha,España
-LAGUNA PLATA,Castilla y León,España
-AREA METROPOLITANA,Castilla y León,España
-SERRANIA,Aragón,España
-BOSQUE ROJO,Extremadura,España
 COSTA,Comunidad Valenciana,España
+SERRANÍA,Aragón,España
+RIBERA,Andalucía,España
+ÁREA METROPOLITANA,Castilla y León,España
+VALLE,Castilla y León,España
+CAMPIÑA,Andalucía,España
+PUERTA NORTE,Castilla-La Mancha,España
+LAGOS,Extremadura,España
+PUERTO,Comunidad Valenciana,España
+BOSQUE ROJO,Extremadura,España
+LADERA SUR,Castilla-La Mancha,España
+MIRADOR,Castilla y León,España
+PONIENTE,Andalucía,España
+LEVANTE,Comunidad Valenciana,España
+LAGUNA PLATA,Castilla y León,España

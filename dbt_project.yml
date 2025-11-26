@@ -32,19 +32,17 @@ models:
     staging:
       +materialized: view
       +database: "{{ env_var('DBT_ENVIRONMENTS') }}_SILVER_DB"
-      # Deja el "Custom schema" en dbt Cloud (p.ej. DBT_PEDROJLM) o añade aquí +schema si prefieres gestionarlo en repo
-
-    intermediate:
-      +materialized: view
-      +database: "{{ env_var('DBT_SILVER_DB', 'PEDROJLM_DEV_SILVER_DB') }}"
-      +schema: "DBT_PEDROJLM"
-      +tags: ["intermediate","silver"]
 
     marts:
-      +materialized: table          # por defecto, tablas físicas
+      +materialized: table          
       +database: PEDROJLM_DEV_GOLD_DB
+
       core:
         +tags: ["gold", "core"]
+
+        intermediate:
+          +materialized: view       
+          +tags: ["intermediate", "gold_core"]
 
 seeds:
   +database: "{{ env_var('DBT_ENVIRONMENTS') }}_BRONZE_DB"

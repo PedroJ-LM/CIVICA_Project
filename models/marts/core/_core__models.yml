@@ -19,37 +19,8 @@ models:
       - name: day_of_week
       - name: is_weekend
 
-  - name: dim_zone
-    description: "Zones enriched with region and country information."
-    columns:
-      - name: zone_id
-        description: "Zone natural key."
-        tests: [not_null, unique]
-
-      - name: zone_name
-        description: "Canonical zone name (cleaned, uppercased)."
-        tests: [not_null]
-
-      - name: region_id
-        description: "FK to stg_franchise_script__regions."
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('stg_franchise_script__regions')
-                field: region_id
-
-      - name: country_id
-        description: "FK to stg_franchise_script__countries."
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('stg_franchise_script__countries')
-                field: country_id
-
   - name: dim_store
-    description: "Stores enriched with zone, region, country, format and status."
+    description: "Denormalized store dimension with zone, region, country, format, status and capacity."
     columns:
       - name: store_id
         description: "Store natural key."
@@ -59,28 +30,30 @@ models:
         description: "Canonical store name."
 
       - name: zone_id
-        description: "FK to dim_zone."
+        description: "Zone of the store (natural key from zones staging)."
         tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('dim_zone')
+                to: ref('stg_franchise_script__zones')
                 field: zone_id
 
       - name: region_id
-        description: "Region of the store (from dim_zone)."
+        description: "Region of the store."
         tests:
+          - not_null
           - relationships:
               arguments:
-                to: ref('dim_zone')
+                to: ref('stg_franchise_script__regions')
                 field: region_id
 
       - name: country_id
-        description: "Country of the store (from dim_zone)."
+        description: "Country of the store."
         tests:
+          - not_null
           - relationships:
               arguments:
-                to: ref('dim_zone')
+                to: ref('stg_franchise_script__countries')
                 field: country_id
 
       - name: store_format_id
@@ -99,35 +72,48 @@ models:
                 to: ref('stg_franchise_script__store_status')
                 field: store_status_id
 
+      - name: capacity_per_hour
+        description: "Operational throughput capacity; must be >= 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
-  - name: dim_channel
-    description: "Sales channels."
-    columns:
-      - name: channel_id
-        description: "Surrogate key of the channel."
-        tests: [not_null, unique]
+      - name: floor_area_m2
+        description: "Store floor area in square meters; must be >= 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
-      - name: channel_name
-        description: "Canonical name of the sales channel."
-        tests: [not_null, unique]
+      - name: gate_count
+        description: "Number of gates; must be >= 1."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 1"
 
-  - name: dim_promo
-    description: "Promo codes (including NO_PROMO for non-promotional tickets)."
-    columns:
-      - name: promo_id
-        description: "Surrogate key of the promo code."
-        tests: [not_null, unique]
+      - name: lat
+        description: "Store latitude."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -90 and 90"
 
-      - name: promo_code
-        description: "Canonical promo code."
-        tests: [not_null, unique]
+      - name: lon
+        description: "Store longitude."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -180 and 180"
+
 
   # ======================
   # HECHOS
   # ======================
 
   - name: fct_store_sales_day
-    description: "Daily sales per store, enriched with zone and weather context."
+    description: "Daily sales per store, enriched with store zone and weather context."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id', 'date_id']
@@ -151,11 +137,11 @@ models:
                 field: date_id
 
       - name: zone_id
-        description: "Redundant FK to dim_zone via dim_store (denormalized for convenience)."
+        description: "Zone of the store (denormalized from dim_store)."
         tests:
           - relationships:
               arguments:
-                to: ref('dim_zone')
+                to: ref('stg_franchise_script__zones')
                 field: zone_id
 
       - name: tickets_day
@@ -184,9 +170,17 @@ models:
 
       - name: rain_mm
         description: "Precipitation in mm."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
       - name: wind_kmh
         description: "Wind speed."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
       - name: weather_label_id
         description: "FK to stg_franchise_script__weather_labels."
@@ -196,8 +190,33 @@ models:
                 to: ref('stg_franchise_script__weather_labels')
                 field: weather_label_id
 
+      - name: weather_bucket
+        description: "Discrete bucket derived from temp and rainfall (MILD, HOT, COLD, LIGHT_RAIN, HEAVY_RAIN)."
+
+      - name: is_rainy
+        description: "1 if rain_mm >= 1, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: is_hot
+        description: "1 if t_avg_c >= 28, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: is_cold
+        description: "1 if t_avg_c <= 5, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+
   - name: fct_store_traffic_5m
-    description: "5-minute traffic per store (entries, queues, devices)."
+    description: "5-minute traffic per store (entries, queues, devices, capacity and pressure index)."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['store_id', 'date_id', 'minute_5m_index']
@@ -227,49 +246,107 @@ models:
               arguments:
                 expression: "between 0 and 287"
 
+      - name: zone_id
+        description: "Zone of the store (denormalized from dim_store)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__zones')
+                field: zone_id
+
+      - name: region_id
+        description: "Region of the store (denormalized from dim_store)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: country_id
+        description: "Country of the store (denormalized from dim_store)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
       - name: people_in_count
+        description: "People entering through all gates in that 5-minute slot."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: people_out_count
+        description: "People exiting through all gates in that 5-minute slot."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: queue_avg
+        description: "Average queue length in that 5-minute slot."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: wait_avg_s
+        description: "Average waiting time in seconds in that 5-minute slot."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: devices
+        description: "Average number of detected devices in that 5-minute slot."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
+      - name: capacity_per_hour
+        description: "Nominal store capacity per hour (from dim_store)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: arrival_rate_ph
+        description: "People_in_count converted to an hourly rate."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: utilization_5m
+        description: "Utilization ratio (arrival_rate_ph / capacity_per_hour)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: pressure_index_5m
+        description: "Composite pressure index based on utilization and queue length."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+
   - name: fct_mobility_od_15m
-    description: "Mobility flows from origin zones to destination stores every 15 minutes, with gravity model score."
+    description: "Mobility flows from origin zones to destination stores every 15 minutes, with gravity model score and weather context."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ['origin_zone_id', 'dest_store_id', 'ts_15m']
     columns:
       - name: origin_zone_id
-        description: "FK to dim_zone (origin)."
+        description: "Origin zone of the flow (natural key from zones staging)."
         tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('dim_zone')
+                to: ref('stg_franchise_script__zones')
                 field: zone_id
 
       - name: dest_store_id
@@ -310,3 +387,48 @@ models:
 
       - name: gravity_score
         description: "Gravity-model potential for that OD pair at that time."
+
+      - name: origin_population
+        description: "Population of the origin zone (from zones staging)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: dest_floor_area_m2
+        description: "Floor area of the destination store in m2."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: dest_capacity_per_hour
+        description: "Operational throughput capacity of the destination store."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: weather_bucket
+        description: "Weather category for the origin zone on that day (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
+
+      - name: is_rainy
+        description: "1 if it is a rainy day in the origin zone, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: is_hot
+        description: "1 if it is a hot day in the origin zone, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: is_cold
+        description: "1 if it is a cold day in the origin zone, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
