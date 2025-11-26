@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: int_entries_5m_aggregated_to_days
+    description: "Entries 5m aggregated to daily grain per store (people_in / people_out por día y tienda)."
+    columns:
+      - name: store_id
+        description: "Store natural key."
+        tests: [not_null]
+      - name: date_id
+        description: "Business day derived from ts_5m."
+        tests: [not_null]
+
+  - name: int_queues_5m_aggregated_to_days
+    description: "Queue metrics at 5m aggregated to daily grain per store (cola media y espera media por día)."
+    columns:
+      - name: store_id
+        tests: [not_null]
+      - name: date_id
+        tests: [not_null]
+
+  - name: int_iot_presence_5m_aggregated_to_days
+    description: "IoT presence 5m aggregated to daily grain per store (devices / intensidad media diaria)."
+    columns:
+      - name: store_id
+        tests: [not_null]
+      - name: date_id
+        tests: [not_null]
+
+  - name: int_mobility_od_15m_aggregated_to_days
+    description: "Mobility OD flows 15m aggregated to daily grain per origin zone and destination store."
+    columns:
+      - name: origin_zone_id
+        description: "Origin zone."
+        tests: [not_null]
+      - name: dest_store_id
+        description: "Destination store."
+        tests: [not_null]
+      - name: date_id
+        description: "Business day derived from ts_15m."
+        tests: [not_null]
+
+  - name: int_zones_weather_days_enriched
+    description: "Daily zone weather with derived buckets and flags for reuse in marts and use cases (ventas vs clima, movilidad vs clima)."
+    columns:
+      - name: zone_id
+        tests: [not_null]
+      - name: day
+        tests: [not_null]
+      - name: weather_bucket
+        description: "MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN."
+      - name: is_rainy
+        description: "1 if rain_mm >= 1, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+      - name: is_hot
+        description: "1 if t_avg_c >= 28, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+      - name: is_cold
+        description: "1 if t_avg_c <= 5, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
