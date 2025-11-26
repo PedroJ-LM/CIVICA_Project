@@ -22,7 +22,7 @@ models:
       - name: is_weekend
 
   - name: dim_store
-    description: "Denormalized store dimension with zone, region, country, format, status and capacity."
+    description: "Store dimension with FK to zone, plus format, status and capacity."
     columns:
       - name: store_id
         description: "Store natural key."
@@ -34,29 +34,13 @@ models:
         description: "Canonical store name."
 
       - name: zone_id
-        description: "Zone of the store (natural key from zones staging)."
+        description: "Zone of the store (FK to dim_zone)."
         tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('stg_franchise_script__zones')
+                to: ref('dim_zone')
                 field: zone_id
-
-      - name: region_id
-        description: "Region of the store."
-        tests:
-          - relationships:
-              arguments:
-                to: ref('stg_franchise_script__regions')
-                field: region_id
-
-      - name: country_id
-        description: "Country of the store."
-        tests:
-          - relationships:
-              arguments:
-                to: ref('stg_franchise_script__countries')
-                field: country_id
 
       - name: store_format_id
         description: "FK to stg_franchise_script__store_formats."
@@ -109,6 +93,80 @@ models:
               arguments:
                 expression: "between -180 and 180"
 
+  - name: dim_zone
+    description: "Geographic dimension at zone grain, including region, country and currency."
+    columns:
+      - name: zone_id
+        description: "Zone natural key."
+        tests:
+          - not_null
+          - unique
+
+      - name: zone_name
+        description: "Canonical zone name."
+
+      - name: zone_lat
+        description: "Zone centroid latitude."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -90 and 90"
+
+      - name: zone_lon
+        description: "Zone centroid longitude."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -180 and 180"
+
+      - name: population
+        description: "Population of the zone; must be >= 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: income_index
+        description: "Relative income index for the zone; must be >= 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: unemployment_rate_pct
+        description: "Unemployment rate in percentage; must be between 0 and 100."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+
+      - name: region_id
+        description: "Region of the zone."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: region_name
+        description: "Region name of the zone."
+
+      - name: country_id
+        description: "Country of the zone."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
+      - name: country_name
+        description: "Country name of the zone."
+
+      - name: currency_code
+        description: "ISO currency code for the zone's country (EUR, USD, etc.)."
+
+      - name: currency_name
+        description: "Currency name for the zone's country (Euro, US Dollar, etc.)."
 
   # ======================
   # HECHOS
@@ -139,12 +197,28 @@ models:
                 field: date_id
 
       - name: zone_id
-        description: "Zone of the store (denormalized from dim_store)."
+        description: "Zone of the store (denormalized from dim_store/dim_zone)."
         tests:
           - relationships:
               arguments:
-                to: ref('stg_franchise_script__zones')
+                to: ref('dim_zone')
                 field: zone_id
+
+      - name: region_id
+        description: "Region of the store (derived from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: country_id
+        description: "Country of the store (derived from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
 
       - name: tickets_day
         description: "Number of tickets in the day."
@@ -234,15 +308,15 @@ models:
                 field: date_id
 
       - name: zone_id
-        description: "Zone of the store (denormalized from dim_store)."
+        description: "Zone of the store (denormalized from dim_store/dim_zone)."
         tests:
           - relationships:
               arguments:
-                to: ref('stg_franchise_script__zones')
+                to: ref('dim_zone')
                 field: zone_id
 
       - name: region_id
-        description: "Region of the store (denormalized from dim_store)."
+        description: "Region of the store (derived from dim_zone)."
         tests:
           - relationships:
               arguments:
@@ -250,7 +324,7 @@ models:
                 field: region_id
 
       - name: country_id
-        description: "Country of the store (denormalized from dim_store)."
+        description: "Country of the store (derived from dim_zone)."
         tests:
           - relationships:
               arguments:
@@ -328,12 +402,12 @@ models:
           combination_of_columns: ['origin_zone_id', 'dest_store_id', 'date_id']
     columns:
       - name: origin_zone_id
-        description: "Origin zone of the flow (natural key from zones staging)."
+        description: "Origin zone of the flow (FK to dim_zone)."
         tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('stg_franchise_script__zones')
+                to: ref('dim_zone')
                 field: zone_id
 
       - name: dest_store_id
@@ -372,7 +446,7 @@ models:
         description: "Gravity-model potential for that OD pair on that day."
 
       - name: origin_population
-        description: "Population of the origin zone (from zones staging)."
+        description: "Population of the origin zone (from dim_zone)."
 
       - name: dest_floor_area_m2
         description: "Floor area of the destination store in m2."

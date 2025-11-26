@@ -1,6 +1,8 @@
--- CU4: Cambios de cuota de visitas entre tiendas dentro de cada zona de origen
+{{ config(materialized='table') }}
 
--- Para cada zona de origen, ¿qué tiendas ganan o pierden cuota de flujo de visitas con el tiempo (share dentro de la zona)?
+-- CU4: Cambios de cuota de visitas entre tiendas dentro de cada zona de origen
+-- Para cada zona de origen, ¿qué tiendas ganan o pierden cuota de flujo de visitas
+-- con el tiempo (share dentro de la zona)?
 
 with base as (
     select
@@ -44,9 +46,15 @@ with_share as (
 deltas as (
     select
         ws.origin_zone_id,
-        z.zone_name          as origin_zone_name,
+        dz.zone_name        as origin_zone_name,
+        dz.region_id        as origin_region_id,
+        dz.region_name      as origin_region_name,
+        dz.country_id       as origin_country_id,
+        dz.country_name     as origin_country_name,
+
         ws.dest_store_id,
-        ds.store_name        as dest_store_name,
+        ds.store_name       as dest_store_name,
+
         ws.date_id,
         ws.share_in_zone,
         ws.prior_share_in_zone,
@@ -54,8 +62,8 @@ deltas as (
     from with_share ws
     left join {{ ref('dim_store') }} ds
       on ws.dest_store_id = ds.store_id
-    left join {{ ref('stg_franchise_script__zones') }} z
-      on ws.origin_zone_id = z.zone_id
+    left join {{ ref('dim_zone') }} dz
+      on ws.origin_zone_id = dz.zone_id
 )
 
 select *

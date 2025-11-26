@@ -5,8 +5,41 @@ models:
     description: >
       CU1 · Impacto del clima en la venta diaria media por tienda.
       Agrega fct_store_sales_day por tienda y weather_bucket (y flags is_rainy / is_hot / is_cold),
-      calculando métricas medias de ventas.
+      calculando métricas medias de ventas, con contexto de país / región / zona.
     columns:
+      - name: country_id
+        description: "Country of the store (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
+      - name: country_name
+        description: "Country name of the store (from dim_zone)."
+
+      - name: region_id
+        description: "Region of the store (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: region_name
+        description: "Region name of the store (from dim_zone)."
+
+      - name: zone_id
+        description: "Zone of the store (FK to dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_id
+
+      - name: zone_name
+        description: "Zone name of the store (from dim_zone)."
+
       - name: store_id
         description: "Store natural key (from dim_store)."
         tests:
@@ -66,12 +99,46 @@ models:
               arguments:
                 expression: ">= 0"
 
+
   - name: cu2_store_conversion_sales_vs_traffic
     description: >
       CU2 · Conversión de tráfico en tickets por tienda y día.
       Cruza fct_store_sales_day con fct_store_traffic_day para calcular conversion_rate
-      y analizar su relación con colas, esperas y dispositivos.
+      y analizar su relación con colas, esperas y dispositivos, con contexto de país / región / zona.
     columns:
+      - name: country_id
+        description: "Country of the store (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
+      - name: country_name
+        description: "Country name of the store (from dim_zone)."
+
+      - name: region_id
+        description: "Region of the store (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: region_name
+        description: "Region name of the store (from dim_zone)."
+
+      - name: zone_id
+        description: "Zone of the store (FK to dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_id
+
+      - name: zone_name
+        description: "Zone name of the store (from dim_zone)."
+
       - name: store_id
         description: "Store natural key (from dim_store)."
         tests:
@@ -92,6 +159,15 @@ models:
               arguments:
                 to: ref('dim_date')
                 field: date_id
+
+      - name: year
+        description: "Calendar year of the date."
+
+      - name: month
+        description: "Calendar month of the date."
+
+      - name: day_of_week
+        description: "Day of week of the date."
 
       - name: people_in_count
         description: "Total people entering the store that day (from fct_store_traffic_day)."
@@ -149,26 +225,49 @@ models:
               arguments:
                 expression: ">= 0"
 
+
   - name: cu3_zone_sales_per_capita
     description: >
       CU3 · Ventas per cápita por zona.
       Agrega las ventas diarias de fct_store_sales_day a nivel de zona,
-      usando la población de la zona (denormalizada vía dim_store).
+      usando la población de la zona desde dim_zone, con contexto de país y región.
     columns:
+      - name: country_id
+        description: "Country of the zone (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
+      - name: country_name
+        description: "Country name of the zone (from dim_zone)."
+
+      - name: region_id
+        description: "Region of the zone (from dim_zone)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: region_name
+        description: "Region name of the zone (from dim_zone)."
+
       - name: zone_id
-        description: "Zone natural key (from stg_franchise_script__zones)."
+        description: "Zone natural key (from dim_zone)."
         tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('stg_franchise_script__zones')
+                to: ref('dim_zone')
                 field: zone_id
 
       - name: zone_name
         description: "Zone name."
 
       - name: population
-        description: "Population of the zone, from dim_store-denormalized attributes."
+        description: "Population of the zone (from dim_zone)."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
@@ -182,7 +281,7 @@ models:
                 expression: ">= 0"
 
       - name: sales_per_capita
-        description: "Total_sales / population for the zone."
+        description: "total_sales / population for the zone."
         tests:
           - dbt_utils.expression_is_true:
               arguments:

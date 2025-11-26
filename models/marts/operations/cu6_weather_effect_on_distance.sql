@@ -22,8 +22,8 @@ bucketed as (
     select
         *,
         case
-            when distance_km < 5  then 'NEAR'
-            when distance_km < 15 then 'MID'
+            when distance_km < 150  then 'NEAR'
+            when distance_km < 300 then 'MID'
             else 'FAR'
         end as distance_bucket
     from base
@@ -52,7 +52,7 @@ with_share as (
         a.distance_bucket,
         a.arrivals,
         t.total_arrivals,
-        a.arrivals::float / nullif(t.total_arrivals, 0)::float as share_of_arrivals
+        round( ( a.arrivals::float / nullif(t.total_arrivals, 0)::float ) * 100 , 2)  as pct_arrivals
     from agg a
     join total_weather t
       on a.weather_bucket = t.weather_bucket

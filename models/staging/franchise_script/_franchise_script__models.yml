@@ -581,3 +581,24 @@ models:
         description: "Country name (uppercased, normalized)."
         tests: [not_null, unique]
 
+  - name: stg_franchise_script__countries_currency
+    description: "Staging country-currency."
+    columns:
+      - name: country_id
+        description: "Synthetic country ID = md5(upper(trim(country_name)))."
+        tests:
+          - not_null
+          - unique
+
+      - name: country_name
+        description: "Cleaned country name (upper+trim)."
+        tests:
+          - not_null
+
+      - name: currency_code
+        description: "ISO currency code (EUR, USD, MXN...)."
+        tests:
+          - not_null
+
+      - name: currency_name
+        description: "Currency name (Euro, US Dollar, etc.)."
