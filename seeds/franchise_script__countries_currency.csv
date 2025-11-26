@@ -1,0 +1,21 @@
+country_name,currency_code,currency_name
+Spain,EUR,Euro
+Portugal,EUR,Euro
+France,EUR,Euro
+Italy,EUR,Euro
+Germany,EUR,Euro
+United Kingdom,GBP,British Pound
+Ireland,EUR,Euro
+Netherlands,EUR,Euro
+Belgium,EUR,Euro
+Switzerland,CHF,Swiss Franc
+Austria,EUR,Euro
+Poland,PLN,Polish Zloty
+Czech Republic,CZK,Czech Koruna
+United States,USD,US Dollar
+Canada,CAD,Canadian Dollar
+Mexico,MXN,Mexican Peso
+Brazil,BRL,Brazilian Real
+Argentina,ARS,Argentine Peso
+Chile,CLP,Chilean Peso
+Colombia,COP,Colombian Peso

@@ -11,14 +11,16 @@ with pos as (
   from {{ ref('stg_franchise_script__pos_store_days') }}
 ),
 
-
+-- Ahora obtenemos la geografía combinando dim_store + dim_zone
 stores as (
   select
-    store_id,
-    zone_id,      
-    region_id,
-    country_id
-  from {{ ref('dim_store') }}
+    s.store_id,
+    s.zone_id,
+    z.region_id,
+    z.country_id
+  from {{ ref('dim_store') }} s
+  left join {{ ref('dim_zone') }} z
+    on s.zone_id = z.zone_id
 ),
 
 -- Clima enriquecido por zona y día (intermediate de weather)

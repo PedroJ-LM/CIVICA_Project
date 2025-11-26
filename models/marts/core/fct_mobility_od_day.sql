@@ -19,13 +19,14 @@ with base as (
     {% endif %}
 ),
 
+-- 🔁 AHORA USAMOS dim_zone COMO ORIGEN DE LA ZONA
 origin_zone as (
     select
         zone_id,
-        lat        as origin_lat,
-        lon        as origin_lon,
-        population as origin_population
-    from {{ ref('stg_franchise_script__zones') }}
+        zone_lat        as origin_lat,
+        zone_lon        as origin_lon,
+        population      as origin_population
+    from {{ ref('dim_zone') }}
 ),
 
 dest_store as (

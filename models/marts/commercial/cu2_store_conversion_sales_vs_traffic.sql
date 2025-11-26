@@ -1,11 +1,16 @@
--- CU2: Conversión de tráfico en tickets por tienda y día
+{{ config(materialized='table') }}
 
--- Dado el tráfico de personas en tienda, ¿qué tasa de conversión a tickets tengo por día y tienda? ¿Cómo se relaciona con colas / espera?
+-- CU2: Conversión de tráfico en tickets por tienda y día
+-- Dado el tráfico de personas en tienda, ¿qué tasa de conversión a tickets tengo por día y tienda?
+-- ¿Cómo se relaciona con colas / espera, pudiendo filtrar por zona / región / país?
 
 with traffic as (
     select
         store_id,
         date_id,
+        zone_id,
+        region_id,
+        country_id,
         people_in_count,
         queue_avg,
         wait_avg_s,
@@ -27,7 +32,20 @@ joined as (
     select
         s.store_id,
         ds.store_name,
+
+        -- geografía desde el fact + dim_zone
+        t.zone_id,
+        dz.zone_name,
+        t.region_id,
+        dz.region_name,
+        t.country_id,
+        dz.country_name,
+
         s.date_id,
+        dd.year,
+        dd.month,
+        dd.day_of_week,
+
         t.people_in_count,
         s.tickets_day,
         s.gross_amount_day,
@@ -46,6 +64,10 @@ joined as (
      and s.date_id  = t.date_id
     join {{ ref('dim_store') }} ds
       on s.store_id = ds.store_id
+    left join {{ ref('dim_zone') }} dz
+      on t.zone_id = dz.zone_id
+    join {{ ref('dim_date') }} dd
+      on s.date_id = dd.date_id
 )
 
 select *

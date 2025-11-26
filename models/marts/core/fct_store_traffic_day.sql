@@ -76,12 +76,14 @@ with_capacity as (
         j.wait_avg_s,
         j.devices,
         s.zone_id,
-        s.region_id,
-        s.country_id,
+        z.region_id,
+        z.country_id,
         s.capacity_per_hour
     from joined j
     join {{ ref('dim_store') }} s
       on j.store_id = s.store_id
+    left join {{ ref('dim_zone') }} z
+      on s.zone_id = z.zone_id
 ),
 
 final_base as (
