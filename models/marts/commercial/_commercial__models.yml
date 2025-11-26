@@ -1,0 +1,189 @@
+version: 2
+
+models:
+  - name: cu1_store_sales_vs_weather
+    description: >
+      CU1 · Impacto del clima en la venta diaria media por tienda.
+      Agrega fct_store_sales_day por tienda y weather_bucket (y flags is_rainy / is_hot / is_cold),
+      calculando métricas medias de ventas.
+    columns:
+      - name: store_id
+        description: "Store natural key (from dim_store)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+
+      - name: store_name
+        description: "Canonical store name, denormalized from dim_store."
+
+      - name: weather_bucket
+        description: "Weather bucket (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
+        tests:
+          - not_null
+
+      - name: is_rainy
+        description: "1 if the day is rainy (rain_mm >= 1), else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: is_hot
+        description: "1 if the day is hot (t_avg_c >= 28), else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: is_cold
+        description: "1 if the day is cold (t_avg_c <= 5), else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
+
+      - name: avg_daily_sales
+        description: "Average daily gross_amount_day for the (store, weather_bucket, flags) grouping."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: avg_daily_tickets
+        description: "Average daily tickets for the (store, weather_bucket, flags) grouping."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: avg_ticket_amount
+        description: "Average ticket amount (avg of avg_ticket) for the grouping."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: cu2_store_conversion_sales_vs_traffic
+    description: >
+      CU2 · Conversión de tráfico en tickets por tienda y día.
+      Cruza fct_store_sales_day con fct_store_traffic_day para calcular conversion_rate
+      y analizar su relación con colas, esperas y dispositivos.
+    columns:
+      - name: store_id
+        description: "Store natural key (from dim_store)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+
+      - name: store_name
+        description: "Canonical store name, from dim_store."
+
+      - name: date_id
+        description: "Business date (FK to dim_date)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_id
+
+      - name: people_in_count
+        description: "Total people entering the store that day (from fct_store_traffic_day)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: tickets_day
+        description: "Total tickets for that store and day (from fct_store_sales_day)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: gross_amount_day
+        description: "Total gross sales for that store and day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: avg_ticket
+        description: "Average ticket amount for that store and day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: conversion_rate
+        description: "tickets_day / people_in_count (0–1+); null if people_in_count = 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: queue_avg
+        description: "Average queue length during the day (from fct_store_traffic_day)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: wait_avg_s
+        description: "Average waiting seconds during the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: devices
+        description: "Average number of detected devices during the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+  - name: cu3_zone_sales_per_capita
+    description: >
+      CU3 · Ventas per cápita por zona.
+      Agrega las ventas diarias de fct_store_sales_day a nivel de zona,
+      usando la población de la zona (denormalizada vía dim_store).
+    columns:
+      - name: zone_id
+        description: "Zone natural key (from stg_franchise_script__zones)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__zones')
+                field: zone_id
+
+      - name: zone_name
+        description: "Zone name."
+
+      - name: population
+        description: "Population of the zone, from dim_store-denormalized attributes."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: total_sales
+        description: "Total gross sales aggregated across all stores in the zone."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: sales_per_capita
+        description: "Total_sales / population for the zone."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"

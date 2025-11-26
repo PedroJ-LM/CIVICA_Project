@@ -1,28 +1,24 @@
-{{ config(
-    materialized = 'view'
-) }}
+{{ config(materialized='view') }}
 
 with base as (
     select
-        store_id,
-        day,
-        direction_name,
-        people_count,
-        date_load_utc
-    from {{ ref('stg_franchise_script__entries_5m') }}
+        e.store_id,
+        cast(e.ts_5m as date) as date_id,
+        d.direction_name,
+        e.people_count
+    from {{ ref('stg_franchise_script__entries_5m') }} e
+    join {{ ref('stg_franchise_script__directions') }} d
+      on e.direction_id = d.direction_id
 ),
 
 agg as (
     select
         store_id,
-        cast(day as date) as date_id,
-        -- IN / OUT / TOTAL por día
-        sum(case when direction_name = 'IN'  then people_count else 0 end) as people_in_day,
-        sum(case when direction_name = 'OUT' then people_count else 0 end) as people_out_day,
-        sum(people_count)                                                as people_total_day,
-        max(date_load_utc)                                               as date_load_utc
+        date_id,
+        sum(case when direction_name = 'IN'  then people_count else 0 end) as people_in_count,
+        sum(case when direction_name = 'OUT' then people_count else 0 end) as people_out_count
     from base
-    group by store_id, cast(day as date)
+    group by store_id, date_id
 )
 
 select *
