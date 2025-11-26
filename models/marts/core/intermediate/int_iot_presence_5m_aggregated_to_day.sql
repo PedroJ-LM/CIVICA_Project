@@ -1,26 +1,20 @@
-{{ config(
-    materialized = 'view'
-) }}
+{{ config(materialized='view') }}
 
 with base as (
     select
         store_id,
-        day,
-        devices,
-        rssi_mean,
-        date_load_utc
+        ts_5m,
+        devices
     from {{ ref('stg_franchise_script__iot_presence_5m') }}
 ),
 
 agg as (
     select
         store_id,
-        cast(day as date) as date_id,
-        avg(devices)      as devices_day,
-        avg(rssi_mean)    as rssi_mean_day,
-        max(date_load_utc) as date_load_utc
+        cast(ts_5m as date) as date_id,
+        avg(devices) as devices
     from base
-    group by store_id, cast(day as date)
+    group by store_id, cast(ts_5m as date)
 )
 
 select *

@@ -35,7 +35,7 @@ models:
 
     marts:
       +materialized: table          
-      +database: PEDROJLM_DEV_GOLD_DB
+      +database: "{{ env_var('DBT_ENVIRONMENTS') }}_GOLD_DB"
 
       core:
         +tags: ["gold", "core"]

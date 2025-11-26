@@ -1,52 +1,16 @@
 version: 2
 
 models:
-  - name: int_entries_5m_aggregated_to_days
-    description: "Entries 5m aggregated to daily grain per store (people_in / people_out por día y tienda)."
-    columns:
-      - name: store_id
-        description: "Store natural key."
-        tests: [not_null]
-      - name: date_id
-        description: "Business day derived from ts_5m."
-        tests: [not_null]
-
-  - name: int_queues_5m_aggregated_to_days
-    description: "Queue metrics at 5m aggregated to daily grain per store (cola media y espera media por día)."
-    columns:
-      - name: store_id
-        tests: [not_null]
-      - name: date_id
-        tests: [not_null]
-
-  - name: int_iot_presence_5m_aggregated_to_days
-    description: "IoT presence 5m aggregated to daily grain per store (devices / intensidad media diaria)."
-    columns:
-      - name: store_id
-        tests: [not_null]
-      - name: date_id
-        tests: [not_null]
-
-  - name: int_mobility_od_15m_aggregated_to_days
-    description: "Mobility OD flows 15m aggregated to daily grain per origin zone and destination store."
-    columns:
-      - name: origin_zone_id
-        description: "Origin zone."
-        tests: [not_null]
-      - name: dest_store_id
-        description: "Destination store."
-        tests: [not_null]
-      - name: date_id
-        description: "Business day derived from ts_15m."
-        tests: [not_null]
 
   - name: int_zones_weather_days_enriched
     description: "Daily zone weather with derived buckets and flags for reuse in marts and use cases (ventas vs clima, movilidad vs clima)."
     columns:
       - name: zone_id
-        tests: [not_null]
+        tests:
+          - not_null
       - name: day
-        tests: [not_null]
+        tests:
+          - not_null
       - name: weather_bucket
         description: "MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN."
       - name: is_rainy
@@ -67,3 +31,86 @@ models:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "in (0, 1)"
+
+
+  - name: int_entries_5m_aggregated_to_day
+    description: "Daily aggregated entries per store (IN / OUT) built from 5m ENTRIES_5M."
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+      - name: date_id
+        tests:
+          - not_null
+      - name: people_in_count
+        description: "Total inbound people in the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: people_out_count
+        description: "Total outbound people in the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+
+  - name: int_queues_5m_aggregated_to_day
+    description: "Daily averages of queue length and waiting time per store built from 5m QUEUES_5M."
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+      - name: date_id
+        tests:
+          - not_null
+      - name: queue_avg
+        description: "Average queue length during the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: wait_avg_s
+        description: "Average waiting time (seconds) during the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+
+  - name: int_iot_presence_5m_aggregated_to_day
+    description: "Daily average number of detected devices per store built from 5m IOT_PRESENCE_5M."
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+      - name: date_id
+        tests:
+          - not_null
+      - name: devices
+        description: "Average number of detected devices during the day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+
+  - name: int_mobility_od_15m_aggregated_to_day
+    description: "Daily aggregated mobility flows from origin zones to destination stores built from 15m MOBILITY_OD_15M."
+    columns:
+      - name: origin_zone_id
+        tests:
+          - not_null
+      - name: dest_store_id
+        tests:
+          - not_null
+      - name: date_id
+        tests:
+          - not_null
+      - name: arrivals
+        description: "Total arrivals from origin zone to destination store in that day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"

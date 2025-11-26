@@ -1,26 +1,22 @@
-{{ config(
-    materialized = 'view'
-) }}
+{{ config(materialized='view') }}
 
 with base as (
     select
         store_id,
-        day,
+        ts_5m,
         queue_avg,
-        wait_avg_s,
-        date_load_utc
+        wait_avg_s
     from {{ ref('stg_franchise_script__queues_5m') }}
 ),
 
 agg as (
     select
         store_id,
-        cast(day as date) as date_id,
-        avg(queue_avg)   as queue_avg_day,
-        avg(wait_avg_s)  as wait_avg_s_day,
-        max(date_load_utc) as date_load_utc
+        cast(ts_5m as date) as date_id,
+        avg(queue_avg)  as queue_avg,
+        avg(wait_avg_s) as wait_avg_s
     from base
-    group by store_id, cast(day as date)
+    group by store_id, cast(ts_5m as date)
 )
 
 select *

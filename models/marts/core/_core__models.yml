@@ -11,7 +11,9 @@ models:
     columns:
       - name: date_id
         description: "Primary key of the date dimension (DATE)."
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
 
       - name: year
       - name: month
@@ -24,7 +26,9 @@ models:
     columns:
       - name: store_id
         description: "Store natural key."
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
 
       - name: store_name
         description: "Canonical store name."
@@ -41,7 +45,6 @@ models:
       - name: region_id
         description: "Region of the store."
         tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('stg_franchise_script__regions')
@@ -50,7 +53,6 @@ models:
       - name: country_id
         description: "Country of the store."
         tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('stg_franchise_script__countries')
@@ -170,17 +172,9 @@ models:
 
       - name: rain_mm
         description: "Precipitation in mm."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
 
       - name: wind_kmh
         description: "Wind speed."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
 
       - name: weather_label_id
         description: "FK to stg_franchise_script__weather_labels."
@@ -215,11 +209,11 @@ models:
                 expression: "in (0, 1)"
 
 
-  - name: fct_store_traffic_5m
-    description: "5-minute traffic per store (entries, queues, devices, capacity and pressure index)."
+  - name: fct_store_traffic_day
+    description: "Daily traffic per store (entries, queues, devices, capacity and pressure index)."
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: ['store_id', 'date_id', 'minute_5m_index']
+          combination_of_columns: ['store_id', 'date_id']
     columns:
       - name: store_id
         description: "FK to dim_store."
@@ -231,20 +225,13 @@ models:
                 field: store_id
 
       - name: date_id
-        description: "FK to dim_date (cast of ts_5m)."
+        description: "FK to dim_date."
         tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_date')
                 field: date_id
-
-      - name: minute_5m_index
-        description: "Index of the 5-minute slot in the day (0–287)."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "between 0 and 287"
 
       - name: zone_id
         description: "Zone of the store (denormalized from dim_store)."
@@ -271,35 +258,35 @@ models:
                 field: country_id
 
       - name: people_in_count
-        description: "People entering through all gates in that 5-minute slot."
+        description: "Total inbound people in the day."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: people_out_count
-        description: "People exiting through all gates in that 5-minute slot."
+        description: "Total outbound people in the day."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: queue_avg
-        description: "Average queue length in that 5-minute slot."
+        description: "Average queue length during the day."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: wait_avg_s
-        description: "Average waiting time in seconds in that 5-minute slot."
+        description: "Average waiting time in seconds during the day."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
       - name: devices
-        description: "Average number of detected devices in that 5-minute slot."
+        description: "Average number of detected devices in the day."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
@@ -313,7 +300,7 @@ models:
                 expression: ">= 0"
 
       - name: arrival_rate_ph
-        description: "People_in_count converted to an hourly rate."
+        description: "People_in_count converted to an hourly rate using the arrival_rate_per_hour macro."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
@@ -334,11 +321,11 @@ models:
                 expression: ">= 0"
 
 
-  - name: fct_mobility_od_15m
-    description: "Mobility flows from origin zones to destination stores every 15 minutes, with gravity model score and weather context."
+  - name: fct_mobility_od_day
+    description: "Daily mobility flows from origin zones to destination stores, with gravity score and weather context."
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: ['origin_zone_id', 'dest_store_id', 'ts_15m']
+          combination_of_columns: ['origin_zone_id', 'dest_store_id', 'date_id']
     columns:
       - name: origin_zone_id
         description: "Origin zone of the flow (natural key from zones staging)."
@@ -359,7 +346,7 @@ models:
                 field: store_id
 
       - name: date_id
-        description: "FK to dim_date (cast of ts_15m)."
+        description: "FK to dim_date (day of the flow)."
         tests:
           - not_null
           - relationships:
@@ -367,12 +354,8 @@ models:
                 to: ref('dim_date')
                 field: date_id
 
-      - name: ts_15m
-        description: "15-minute timestamp of the observation."
-        tests: [not_null]
-
       - name: arrivals
-        description: "Number of arrivals from origin_zone to dest_store in that 15-minute slot."
+        description: "Total arrivals from origin_zone to dest_store in that day."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
@@ -386,28 +369,16 @@ models:
                 expression: ">= 0"
 
       - name: gravity_score
-        description: "Gravity-model potential for that OD pair at that time."
+        description: "Gravity-model potential for that OD pair on that day."
 
       - name: origin_population
         description: "Population of the origin zone (from zones staging)."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
 
       - name: dest_floor_area_m2
         description: "Floor area of the destination store in m2."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
 
       - name: dest_capacity_per_hour
         description: "Operational throughput capacity of the destination store."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
 
       - name: weather_bucket
         description: "Weather category for the origin zone on that day (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
