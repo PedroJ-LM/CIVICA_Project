@@ -17,13 +17,13 @@ final as (
     store_id,
     opened_at,
     closed_at,
-    upper(trim(channel))                     as channel_name,
+    --upper(trim(channel))                     as channel_name,
     md5(upper(trim(channel)))                as channel_id,
     -- metemos NO_PROMO cuando venga null/vacío
-    case 
-      when promo_code is null or trim(promo_code) = '' then 'NO_PROMO'
-      else upper(promo_code)
-    end                                      as promo_code,
+    --case 
+    --  when promo_code is null or trim(promo_code) = '' then 'NO_PROMO'
+    --  else upper(promo_code)
+    --end                                      as promo_code,
 
     case 
       when promo_code is null or trim(promo_code) = '' then md5('NO_PROMO')

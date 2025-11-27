@@ -99,6 +99,10 @@ models:
               arguments:
                 expression: ">= 0"
 
+      - name: currency_code
+        description: "ISO currency code for the store's country (EUR, USD, etc.)."
+
+
 
   - name: cu2_store_conversion_sales_vs_traffic
     description: >

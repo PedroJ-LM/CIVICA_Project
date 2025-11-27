@@ -5,7 +5,8 @@
     target_schema = 'SNAPSHOTS',
     unique_key    = 'zone_id',
     strategy      = 'timestamp',
-    updated_at    = 'date_load_utc'
+    updated_at    = 'date_load_utc',
+    hard_deletes  = 'invalidate'
   )
 }}
 
