@@ -1,10 +1,3 @@
-{% macro arrival_rate_per_hour(count_expr, window_minutes) %}
-  (
-    {{ count_expr }}::float
-    * 60.0 / {{ window_minutes }}::float
-  )
-{% endmacro %}
-
 {% macro utilization(arrival_rate_expr, capacity_expr) %}
   (
     {{ arrival_rate_expr }}::float

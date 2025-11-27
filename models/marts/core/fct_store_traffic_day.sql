@@ -58,7 +58,9 @@ with_capacity as (
         s.zone_id,
         z.region_id,
         z.country_id,
-        s.capacity_per_hour
+        s.capacity_per_hour,
+        s.opening_time,
+        s.closing_time
     from joined j
     join {{ ref('dim_store') }} s
       on j.store_id = s.store_id
@@ -79,15 +81,36 @@ final_base as (
         wait_avg_s,
         devices,
         capacity_per_hour,
-        {{ arrival_rate_per_hour('people_in_count', 5) }}         as arrival_rate_ph,
-        {{ utilization('arrival_rate_ph', 'capacity_per_hour') }} as utilization_5m
+
+        -- entradas medias por hora del día:
+        -- total de entradas / horas de apertura
+        round(
+          people_in_count::float
+            / nullif(datediff('minute', opening_time, closing_time) / 60.0, 0.0),
+          2
+        ) as arrival_rate_ph,
+
+        {{ utilization('arrival_rate_ph', 'capacity_per_hour') }} as utilization
     from with_capacity
 ),
 
 final as (
     select
-        *,
-        {{ pressure_index('utilization_5m', 'queue_avg') }} as pressure_index_5m
+        store_id,
+        date_id,
+        zone_id,
+        region_id,
+        country_id,
+        people_in_count,
+        people_out_count,
+        arrival_rate_ph,
+        round(queue_avg,   2) as queue_avg,
+        round(wait_avg_s,  2) as wait_avg_s,
+        round(devices,     0) as devices,
+        capacity_per_hour,
+        round(utilization,  2) as utilization,
+        round({{ pressure_index('utilization', 'queue_avg') }}, 2)
+            as pressure_index
     from final_base
 )
 

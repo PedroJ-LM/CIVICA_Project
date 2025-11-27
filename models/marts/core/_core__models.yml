@@ -390,14 +390,14 @@ models:
               arguments:
                 expression: ">= 0"
 
-      - name: utilization_5m
+      - name: utilization
         description: "Utilization ratio (arrival_rate_ph / capacity_per_hour)."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: ">= 0"
 
-      - name: pressure_index_5m
+      - name: pressure_index
         description: "Composite pressure index based on utilization and queue length."
         tests:
           - dbt_utils.expression_is_true:
@@ -408,82 +408,89 @@ models:
   - name: fct_mobility_od_day
     description: "Daily mobility flows from origin zones to destination stores, with gravity score and weather context."
     tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: ['origin_zone_id', 'dest_store_id', 'date_id']
+    - dbt_utils.unique_combination_of_columns:
+        combination_of_columns: ['origin_zone_id', 'dest_store_id', 'date_id']
     columns:
-      - name: origin_zone_id
-        description: "Origin zone of the flow (FK to dim_zone)."
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_zone')
-                field: zone_id
+    - name: origin_zone_id
+      description: "Origin zone of the flow (FK to dim_zone)."
+      tests:
+        - not_null
+        - relationships:
+            arguments:
+              to: ref('dim_zone')
+              field: zone_id
 
-      - name: dest_store_id
-        description: "FK to dim_store (destination store)."
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_store')
-                field: store_id
+    - name: dest_store_id
+      description: "FK to dim_store (destination store)."
+      tests:
+        - not_null
+        - relationships:
+            arguments:
+              to: ref('dim_store')
+              field: store_id
 
-      - name: date_id
-        description: "FK to dim_date (day of the flow)."
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_date')
-                field: date_id
+    - name: date_id
+      description: "FK to dim_date (day of the flow)."
+      tests:
+        - not_null
+        - relationships:
+            arguments:
+              to: ref('dim_date')
+              field: date_id
 
-      - name: arrivals
-        description: "Total arrivals from origin_zone to dest_store in that day."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
+    - name: arrivals
+      description: "Total arrivals from origin_zone to dest_store in that day."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: ">= 0"
 
-      - name: distance_km
-        description: "Distance between zone centroid and store in km."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
+    - name: distance_km
+      description: "Distance between zone centroid and store in km."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: ">= 0"
 
-      - name: gravity_score
-        description: "Gravity-model potential for that OD pair on that day."
+    - name: gravity_score
+      description: "Gravity-model potential for that OD pair on that day."
 
-      - name: origin_population
-        description: "Population of the origin zone (from dim_zone)."
+    - name: gravity_score_percentile
+      description: "Percentile rank of gravity_score compared to all OD flows (0=lowest, 1=highest)."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: "between 0 and 1"
 
-      - name: dest_floor_area_m2
-        description: "Floor area of the destination store in m2."
+    - name: origin_population
+      description: "Population of the origin zone (from dim_zone)."
 
-      - name: dest_capacity_per_hour
-        description: "Operational throughput capacity of the destination store."
+    - name: dest_floor_area_m2
+      description: "Floor area of the destination store in m2."
 
-      - name: weather_bucket
-        description: "Weather category for the origin zone on that day (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
+    - name: dest_capacity_per_hour
+      description: "Operational throughput capacity of the destination store."
 
-      - name: is_rainy
-        description: "1 if it is a rainy day in the origin zone, else 0."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "in (0, 1)"
+    - name: weather_bucket
+      description: "Weather category for the origin zone on that day (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
 
-      - name: is_hot
-        description: "1 if it is a hot day in the origin zone, else 0."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "in (0, 1)"
+    - name: is_rainy
+      description: "1 if it is a rainy day in the origin zone, else 0."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: "in (0, 1)"
 
-      - name: is_cold
-        description: "1 if it is a cold day in the origin zone, else 0."
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "in (0, 1)"
+    - name: is_hot
+      description: "1 if it is a hot day in the origin zone, else 0."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: "in (0, 1)"
+
+    - name: is_cold
+      description: "1 if it is a cold day in the origin zone, else 0."
+      tests:
+        - dbt_utils.expression_is_true:
+            arguments:
+              expression: "in (0, 1)"

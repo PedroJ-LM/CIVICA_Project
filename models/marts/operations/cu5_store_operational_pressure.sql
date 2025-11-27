@@ -23,8 +23,8 @@ with base as (
         t.wait_avg_s,
         t.devices,
         t.arrival_rate_ph,
-        t.utilization_5m    as utilization,
-        t.pressure_index_5m as pressure_index
+        t.utilization,
+        t.pressure_index
     from {{ ref('fct_store_traffic_day') }} t
     join {{ ref('dim_store') }} ds
       on t.store_id = ds.store_id

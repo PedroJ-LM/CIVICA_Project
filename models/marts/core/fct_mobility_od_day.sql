@@ -83,7 +83,7 @@ with_weather as (
       and g.date_id        = w.day
 ),
 
-final as (
+final_base as (
     select
         origin_zone_id,
         dest_store_id,
@@ -99,6 +99,16 @@ final as (
         is_hot,
         is_cold
     from with_weather
+),
+
+final as (
+    select
+        *,
+        -- Percentil global del gravity_score frente a todos los demás flujos
+        percent_rank() over (
+          order by gravity_score
+        ) as gravity_score_percentile
+    from final_base
 )
 
 select *
