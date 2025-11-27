@@ -50,6 +50,9 @@ models:
                 to: ref('stg_franchise_script__store_formats')
                 field: store_format_id
 
+      - name: store_format_name
+        description: "Human-readable store format (e.g. HYPERMARKET, CONVENIENCE...)."
+
       - name: store_status_id
         description: "FK to stg_franchise_script__store_status."
         tests:
@@ -57,6 +60,9 @@ models:
               arguments:
                 to: ref('stg_franchise_script__store_status')
                 field: store_status_id
+
+      - name: store_status_name
+        description: "Human-readable store status (e.g. OPEN, CLOSED, UNDER_RENOVATION...)."
 
       - name: capacity_per_hour
         description: "Operational throughput capacity; must be >= 0."
@@ -92,6 +98,10 @@ models:
           - dbt_utils.expression_is_true:
               arguments:
                 expression: "between -180 and 180"
+
+      - name: date_load_utc
+        description: "Last load date in UTC for this record."
+
 
   - name: dim_zone
     description: "Geographic dimension at zone grain, including region, country and currency."

@@ -463,11 +463,6 @@ models:
                 to: ref('stg_franchise_script__channels')
                 field: channel_id
 
-      - name: promo_code
-        description: "Normalized promo code; 'NO_PROMO' when there was no promo in the source."
-        tests:
-          - not_null
-
       - name: promo_id
         description: "Catalog ID for promo code (includes NO_PROMO for tickets without promo)."
         tests:

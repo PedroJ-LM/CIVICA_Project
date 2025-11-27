@@ -5,11 +5,12 @@
     target_schema = 'SNAPSHOTS',
     unique_key    = 'store_id',
     strategy      = 'timestamp',
-    updated_at    = 'date_load_utc'
+    updated_at    = 'date_load_utc',
+    hard_deletes  = 'invalidate'
   )
 }}
 
 select *
-from {{ ref('stg_franchise_script__stores') }}
+from {{ ref('base_franchise_script__stores') }}
 
 {% endsnapshot %}

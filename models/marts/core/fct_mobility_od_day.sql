@@ -1,7 +1,5 @@
 {{ config(
-    materialized='incremental',
-    unique_key=['origin_zone_id', 'dest_store_id', 'date_id'],
-    on_schema_change='sync_all_columns'
+    materialized='table'
 ) }}
 
 with base as (
@@ -11,15 +9,8 @@ with base as (
         date_id,
         arrivals
     from {{ ref('int_mobility_od_15m_aggregated_to_day') }}
-    {% if is_incremental() %}
-      where date_id > (
-        select coalesce(max(date_id), cast('1900-01-01' as date))
-        from {{ this }}
-      )
-    {% endif %}
 ),
 
--- 🔁 AHORA USAMOS dim_zone COMO ORIGEN DE LA ZONA
 origin_zone as (
     select
         zone_id,

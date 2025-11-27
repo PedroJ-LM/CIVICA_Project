@@ -1,7 +1,5 @@
 {{ config(
-    materialized='incremental',
-    unique_key=['store_id', 'date_id'],
-    on_schema_change='sync_all_columns'
+    materialized='table'
 ) }}
 
 with entries as (
@@ -11,12 +9,6 @@ with entries as (
         people_in_count,
         people_out_count
     from {{ ref('int_entries_5m_aggregated_to_day') }}
-    {% if is_incremental() %}
-      where date_id > (
-        select coalesce(max(date_id), cast('1900-01-01' as date))
-        from {{ this }}
-      )
-    {% endif %}
 ),
 
 queues as (
@@ -26,12 +18,6 @@ queues as (
         queue_avg,
         wait_avg_s
     from {{ ref('int_queues_5m_aggregated_to_day') }}
-    {% if is_incremental() %}
-      where date_id > (
-        select coalesce(max(date_id), cast('1900-01-01' as date))
-        from {{ this }}
-      )
-    {% endif %}
 ),
 
 iot as (
@@ -40,12 +26,6 @@ iot as (
         date_id,
         devices
     from {{ ref('int_iot_presence_5m_aggregated_to_day') }}
-    {% if is_incremental() %}
-      where date_id > (
-        select coalesce(max(date_id), cast('1900-01-01' as date))
-        from {{ this }}
-      )
-    {% endif %}
 ),
 
 joined as (
