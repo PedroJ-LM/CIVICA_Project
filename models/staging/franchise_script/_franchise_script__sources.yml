@@ -11,10 +11,34 @@ sources:
 
     tables:
       - name: ZONES
-        description: "Population and socio-economic attributes by zone."
+        description: "Population, geography and socio-economic attributes by zone (now including region and country names)."
         columns:
           - name: zone_id
+            description: "Zone natural key (1..N)."
             tests: [not_null, unique]
+
+          - name: zone_name
+            description: "Human-readable zone name (e.g. 'Costa', 'Serranía')."
+            tests: [not_null]
+
+          - name: region_name
+            description: "Region associated to the zone (e.g. 'Comunidad Valenciana')."
+            tests: [not_null]
+
+          - name: country_name
+            description: "Country associated to the zone (e.g. 'Spain')."
+            tests: [not_null]
+
+          - name: lat
+            description: "Zone centroid latitude."
+          - name: lon
+            description: "Zone centroid longitude."
+          - name: population
+            description: "Estimated population in the zone."
+          - name: income_index
+            description: "Relative income index for the zone."
+          - name: unemployment_rate
+            description: "Unemployment rate (0–100, no % sign)."
 
       - name: STORES
         description: "Store master data: format, capacity, opening hours, location."

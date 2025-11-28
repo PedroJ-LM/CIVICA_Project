@@ -1,5 +1,6 @@
 {{ config(
     materialized='incremental',
+    incremental_strategy = 'append',
     unique_key=['store_id', 'gate_id', 'ts_5m', 'direction_id'],
     on_schema_change='sync_all_columns'
 ) }}

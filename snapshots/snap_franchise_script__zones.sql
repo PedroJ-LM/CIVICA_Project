@@ -6,11 +6,11 @@
     unique_key    = 'zone_id',
     strategy      = 'timestamp',
     updated_at    = 'date_load_utc',
-    hard_deletes  = 'invalidate'
+    hard_deletes  = 'invalidate'   
   )
 }}
 
 select *
-from {{ ref('stg_franchise_script__zones') }}
+from {{ ref('base_franchise_script__zones') }}
 
 {% endsnapshot %}

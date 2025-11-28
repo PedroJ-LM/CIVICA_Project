@@ -107,13 +107,15 @@ models:
     description: "Geographic dimension at zone grain, including region, country and currency."
     columns:
       - name: zone_id
-        description: "Zone natural key."
+        description: "Zone natural key (from stg_franchise_script__zones)."
         tests:
           - not_null
           - unique
 
       - name: zone_name
-        description: "Canonical zone name."
+        description: "Canonical zone name (cleaned and uppercased)."
+        tests:
+          - not_null
 
       - name: zone_lat
         description: "Zone centroid latitude."
@@ -151,32 +153,38 @@ models:
                 expression: "between 0 and 100"
 
       - name: region_id
-        description: "Region of the zone."
+        description: "Region surrogate key (matches stg_franchise_script__regions.region_id)."
         tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('stg_franchise_script__regions')
                 field: region_id
 
       - name: region_name
-        description: "Region name of the zone."
+        description: "Region name of the zone (from stg_franchise_script__regions)."
 
       - name: country_id
-        description: "Country of the zone."
+        description: "Country surrogate key (matches stg_franchise_script__countries.country_id)."
         tests:
+          - not_null
           - relationships:
               arguments:
                 to: ref('stg_franchise_script__countries')
                 field: country_id
 
       - name: country_name
-        description: "Country name of the zone."
+        description: "Country name of the zone (from stg_franchise_script__countries)."
 
       - name: currency_code
         description: "ISO currency code for the zone's country (EUR, USD, etc.)."
+        tests:
+          - not_null
+
 
       - name: currency_name
         description: "Currency name for the zone's country (Euro, US Dollar, etc.)."
+
 
   # ======================
   # HECHOS
@@ -384,7 +392,7 @@ models:
                 expression: ">= 0"
 
       - name: arrival_rate_ph
-        description: "People_in_count converted to an hourly rate using the arrival_rate_per_hour macro."
+        description: "Average hourly arrival rate in that day (people_in_count divided by opening hours)."
         tests:
           - dbt_utils.expression_is_true:
               arguments:
@@ -408,89 +416,89 @@ models:
   - name: fct_mobility_od_day
     description: "Daily mobility flows from origin zones to destination stores, with gravity score and weather context."
     tests:
-    - dbt_utils.unique_combination_of_columns:
-        combination_of_columns: ['origin_zone_id', 'dest_store_id', 'date_id']
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['origin_zone_id', 'dest_store_id', 'date_id']
     columns:
-    - name: origin_zone_id
-      description: "Origin zone of the flow (FK to dim_zone)."
-      tests:
-        - not_null
-        - relationships:
-            arguments:
-              to: ref('dim_zone')
-              field: zone_id
+      - name: origin_zone_id
+        description: "Origin zone of the flow (FK to dim_zone)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_id
 
-    - name: dest_store_id
-      description: "FK to dim_store (destination store)."
-      tests:
-        - not_null
-        - relationships:
-            arguments:
-              to: ref('dim_store')
-              field: store_id
+      - name: dest_store_id
+        description: "FK to dim_store (destination store)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
 
-    - name: date_id
-      description: "FK to dim_date (day of the flow)."
-      tests:
-        - not_null
-        - relationships:
-            arguments:
-              to: ref('dim_date')
-              field: date_id
+      - name: date_id
+        description: "FK to dim_date (day of the flow)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_id
 
-    - name: arrivals
-      description: "Total arrivals from origin_zone to dest_store in that day."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: ">= 0"
+      - name: arrivals
+        description: "Total arrivals from origin_zone to dest_store in that day."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
-    - name: distance_km
-      description: "Distance between zone centroid and store in km."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: ">= 0"
+      - name: distance_km
+        description: "Distance between zone centroid and store in km."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
-    - name: gravity_score
-      description: "Gravity-model potential for that OD pair on that day."
+      - name: gravity_score
+        description: "Gravity-model potential for that OD pair on that day."
 
-    - name: gravity_score_percentile
-      description: "Percentile rank of gravity_score compared to all OD flows (0=lowest, 1=highest)."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: "between 0 and 1"
+      - name: gravity_score_percentile
+        description: "Percentile rank of gravity_score compared to all OD flows (0=lowest, 1=highest)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 1"
 
-    - name: origin_population
-      description: "Population of the origin zone (from dim_zone)."
+      - name: origin_population
+        description: "Population of the origin zone (from dim_zone)."
 
-    - name: dest_floor_area_m2
-      description: "Floor area of the destination store in m2."
+      - name: dest_floor_area_m2
+        description: "Floor area of the destination store in m2."
 
-    - name: dest_capacity_per_hour
-      description: "Operational throughput capacity of the destination store."
+      - name: dest_capacity_per_hour
+        description: "Operational throughput capacity of the destination store."
 
-    - name: weather_bucket
-      description: "Weather category for the origin zone on that day (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
+      - name: weather_bucket
+        description: "Weather category for the origin zone on that day (MILD / HOT / COLD / LIGHT_RAIN / HEAVY_RAIN)."
 
-    - name: is_rainy
-      description: "1 if it is a rainy day in the origin zone, else 0."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: "in (0, 1)"
+      - name: is_rainy
+        description: "1 if it is a rainy day in the origin zone, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
 
-    - name: is_hot
-      description: "1 if it is a hot day in the origin zone, else 0."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: "in (0, 1)"
+      - name: is_hot
+        description: "1 if it is a hot day in the origin zone, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"
 
-    - name: is_cold
-      description: "1 if it is a cold day in the origin zone, else 0."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: "in (0, 1)"
+      - name: is_cold
+        description: "1 if it is a cold day in the origin zone, else 0."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "in (0, 1)"

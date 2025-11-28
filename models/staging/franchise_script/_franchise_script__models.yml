@@ -9,114 +9,146 @@ models:
   - name: stg_franchise_script__stores
     description: "Canonicalized stores; format/status normalized via IDs; consistent types and coords."
     columns:
-    - name: store_id
-      description: "Natural key of the store."
-      tests: [not_null, unique]
+      - name: store_id
+        description: "Natural key of the store."
+        tests: [not_null, unique]
 
-    - name: zone_id
-      description: "Zone foreign key."
-      tests:
-        - not_null
-        - relationships:
-            arguments:
-              to: ref('stg_franchise_script__zones')
-              field: zone_id
+      - name: zone_id
+        description: "Zone foreign key (natural key from stg_franchise_script__zones)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__zones')
+                field: zone_id
 
-    - name: store_format_id
-      description: "Catalog ID for store format."
-      tests:
-        - not_null
-        - relationships:
-            arguments:
-              to: ref('stg_franchise_script__store_formats')
-              field: store_format_id
+      - name: store_format_id
+        description: "Catalog ID for store format."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__store_formats')
+                field: store_format_id
 
-    - name: store_status_id
-      description: "Catalog ID for store status."
-      tests:
-        - not_null
-        - relationships:
-            arguments:
-              to: ref('stg_franchise_script__store_status')
-              field: store_status_id
+      - name: store_status_id
+        description: "Catalog ID for store status."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__store_status')
+                field: store_status_id
 
-    - name: opening_time
-      description: "Opening time cast to TIME."
-      tests: [not_null]
+      - name: opening_time
+        description: "Opening time cast to TIME."
+        tests: [not_null]
 
-    - name: closing_time
-      description: "Closing time cast to TIME."
-      tests: [not_null]
+      - name: closing_time
+        description: "Closing time cast to TIME."
+        tests: [not_null]
 
-    - name: capacity_per_hour
-      description: "Operational throughput capacity; must be positive."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: ">= 0"
+      - name: capacity_per_hour
+        description: "Operational throughput capacity; must be positive."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
-    - name: floor_area_m2
-      description: "Store floor area in square meters; must be positive."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: ">= 0"
+      - name: floor_area_m2
+        description: "Store floor area in square meters; must be positive."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
 
-    - name: gate_count
-      description: "Number of gates; must be >= 1."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: ">= 1"
+      - name: gate_count
+        description: "Number of gates; must be >= 1."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 1"
 
-    - name: lat
-      description: "Latitude in decimal degrees."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: "between -90 and 90"
+      - name: lat
+        description: "Latitude in decimal degrees."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -90 and 90"
 
-    - name: lon
-      description: "Longitude in decimal degrees."
-      tests:
-        - dbt_utils.expression_is_true:
-            arguments:
-              expression: "between -180 and 180"
+      - name: lon
+        description: "Longitude in decimal degrees."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -180 and 180"
 
-    - name: date_load_utc
-      description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
-      tests: [not_null]
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
+        tests: [not_null]
+
 
   - name: stg_franchise_script__zones
-    description: "Canonicalized zones (types, coords) with cleaned names (without #n) and typed attributes."
+    description: "Canonicalized zones (types, coords) with cleaned names (without #n), typed attributes and FKs to regions/countries."
     columns:
       - name: zone_id
+        description: "Natural key of the zone from source ZONES."
         tests: [not_null, unique]
+
       - name: zone_name
         description: "Zone name cleaned (without the '#<n>' suffix), uppercased."
         tests:
           - not_null
+
       - name: lat
+        description: "Zone centroid latitude."
         tests:
           - dbt_utils.expression_is_true:
               expression: "between -90 and 90"
+
       - name: lon
+        description: "Zone centroid longitude."
         tests:
           - dbt_utils.expression_is_true:
               expression: "between -180 and 180"
+
       - name: population
+        description: "Population of the zone."
         tests:
           - dbt_utils.expression_is_true:
               expression: ">= 0"
+
       - name: income_index
+        description: "Relative income index for the zone."
+
       - name: unemployment_rate_pct
         description: "Unemployment in percent (0–100), renamed with _pct."
         tests:
           - dbt_utils.expression_is_true:
               expression: "between 0 and 100"
+
+      - name: region_id
+        description: "Surrogate region ID = md5(upper(trim(region_name))). FK to stg_franchise_script__regions."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__regions')
+                field: region_id
+
+      - name: country_id
+        description: "Surrogate country ID = md5(upper(trim(country_name))). FK to stg_franchise_script__countries."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries')
+                field: country_id
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__store_gates
     description: "Canonicalized store gates; direction normalized to direction_id."
@@ -132,12 +164,15 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: gate_id
         description: "Gate id; unique per store."
         tests:
           - not_null
+
       - name: gate_name
         description: "Human-readable name of the gate."
+
       - name: direction_id
         description: "Catalog ID for direction (IN/OUT)."
         tests:
@@ -146,11 +181,14 @@ models:
               arguments:
                 to: ref('stg_franchise_script__directions')
                 field: direction_id
+
       - name: technology
         description: "Sensor technology identifier."
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__pos_store_days
     description: "Daily POS totals per store (DAY, STORE_ID) with canonical names."
@@ -166,27 +204,36 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: day
         description: "Business day."
         tests: [not_null]
+
       - name: tickets_day
         description: "Tickets count (from TICKET_COUNT)."
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: gross_amount_day
         description: "Gross amount of day (from TOTAL_AMOUNT)."
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: avg_ticket
         description: "Average ticket amount (from AVG_TICKET_AMOUNT)."
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__zone_weather_days
     description: "Daily weather by zone; types cleaned; label normalized to weather_label_id."
@@ -202,24 +249,32 @@ models:
               arguments:
                 to: ref('stg_franchise_script__zones')
                 field: zone_id
+
       - name: day
         description: "Day of observation."
         tests: [not_null]
+
       - name: t_avg_c
         description: "Average temperature (°C) from TEMP_C."
         tests:
           - dbt_utils.expression_is_true:
-              expression: "between -50 and 60"
+              arguments:
+                expression: "between -50 and 60"
+
       - name: rain_mm
         description: "Precipitation (mm) from RAINFALL_MM."
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: wind_kmh
         description: "Wind speed (km/h)."
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: weather_label_id
         description: "Catalog ID for weather label."
         tests:
@@ -228,9 +283,11 @@ models:
               arguments:
                 to: ref('stg_franchise_script__weather_labels')
                 field: weather_label_id
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__entries_5m
     description: "5-minute entries per gate. Clean types and derived minute_5m_index."
@@ -245,10 +302,13 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: gate_id
         tests: [not_null]
+
       - name: ts_5m
         tests: [not_null]
+
       - name: direction_id
         tests:
           - not_null
@@ -256,17 +316,23 @@ models:
               arguments:
                 to: ref('stg_franchise_script__directions')
                 field: direction_id
+
       - name: people_count
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: minute_5m_index
         tests:
           - dbt_utils.expression_is_true:
-              expression: "between 0 and 287"
+              arguments:
+                expression: "between 0 and 287"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__iot_presence_5m
     description: "5-minute device presence per store. Derived minute_5m_index."
@@ -281,19 +347,26 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: ts_5m
         tests: [not_null]
+
       - name: devices
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: minute_5m_index
         tests:
           - dbt_utils.expression_is_true:
-              expression: "between 0 and 287"
+              arguments:
+                expression: "between 0 and 287"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__queues_5m
     description: "5-minute queue metrics per store. Derived minute_5m_index."
@@ -308,23 +381,32 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: ts_5m
         tests: [not_null]
+
       - name: queue_avg
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: wait_avg_s
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: minute_5m_index
         tests:
           - dbt_utils.expression_is_true:
-              expression: "between 0 and 287"
+              arguments:
+                expression: "between 0 and 287"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__mobility_od_15m
     description: "Mobility flows O→D every 15 minutes. Typed and time-derived."
@@ -339,6 +421,7 @@ models:
               arguments:
                 to: ref('stg_franchise_script__zones')
                 field: zone_id
+
       - name: dest_store_id
         tests:
           - not_null
@@ -346,19 +429,26 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: ts_15m
         tests: [not_null]
+
       - name: arrivals
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: minute_15m_index
         tests:
           - dbt_utils.expression_is_true:
-              expression: "between 0 and 95"
+              arguments:
+                expression: "between 0 and 95"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__staff_shifts
     description: "Staff shifts per store; role normalized to role_id. Grain (staff_id, shift_start)."
@@ -368,6 +458,7 @@ models:
     columns:
       - name: staff_id
         tests: [not_null]
+
       - name: store_id
         tests:
           - not_null
@@ -375,6 +466,7 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: role_id
         description: "Catalog ID for staff role."
         tests:
@@ -383,14 +475,19 @@ models:
               arguments:
                 to: ref('stg_franchise_script__staff_roles')
                 field: role_id
+
       - name: shift_start
         tests: [not_null]
+
       - name: shift_end
         tests: [not_null]
+
       - name: register_id
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__inventory_days
     description: "Daily stock/sales/replenishments per store-product."
@@ -405,25 +502,35 @@ models:
               arguments:
                 to: ref('stg_franchise_script__stores')
                 field: store_id
+
       - name: product_id
         tests: [not_null]
+
       - name: day
         tests: [not_null]
+
       - name: stock
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: units_sold
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: units_replenished
         tests:
           - dbt_utils.expression_is_true:
-              expression: ">= 0"
+              arguments:
+                expression: ">= 0"
+
       - name: date_load_utc
         description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests: [not_null]
+
 
   - name: stg_franchise_script__pos_tickets
     description: "POS tickets with typed fields, derived day/duration, and normalized channel/promo IDs."
@@ -546,14 +653,14 @@ models:
         tests: [not_null, unique]
 
   - name: stg_franchise_script__regions
-    description: "Regions (comunidades autónomas) derived from the zones hierarchy seed."
+    description: "Regions derived from base_franchise_script__zones (distinct region_name + country_id)."
     columns:
       - name: region_id
-        description: "Surrogate key of the region (MD5 over region_name)."
+        description: "Surrogate key of the region (md5(region_name))."
         tests: [not_null, unique]
 
       - name: region_name
-        description: "Nombre de la comunidad autónoma."
+        description: "Region name (uppercased, normalized)."
         tests: [not_null, unique]
 
       - name: country_id
@@ -565,30 +672,42 @@ models:
                 to: ref('stg_franchise_script__countries')
                 field: country_id
 
+      - name: date_load_utc
+        description: "UTC load timestamp aggregated at region level."
+        tests: [not_null]
+
+      - name: _fivetran_deleted
+        description: "Soft delete flag aggregated at region level."
+
+
   - name: stg_franchise_script__countries
-    description: "Countries derived from the zones hierarchy seed."
+    description: "Countries derived from zones (países que realmente aparecen en los datos)."
     columns:
       - name: country_id
         description: "Surrogate key of the country (MD5 over country_name)."
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_franchise_script__countries_currency')
+                field: country_id
 
       - name: country_name
         description: "Country name (uppercased, normalized)."
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
+
 
   - name: stg_franchise_script__countries_currency
-    description: "Staging country-currency."
+    description: "Staging country-currency (1 fila por país potencial, incluidas futuras expansiones)."
     columns:
       - name: country_id
         description: "Synthetic country ID = md5(upper(trim(country_name)))."
         tests:
           - not_null
-          - unique
-
-      - name: country_name
-        description: "Cleaned country name (upper+trim)."
-        tests:
-          - not_null
+          - unique   # ya no forzamos que todos estén en stg_countries
 
       - name: currency_code
         description: "ISO currency code (EUR, USD, MXN...)."
@@ -597,3 +716,8 @@ models:
 
       - name: currency_name
         description: "Currency name (Euro, US Dollar, etc.)."
+        tests:
+          - not_null
+
+
+
