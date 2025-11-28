@@ -1,23 +1,35 @@
+{{ config(materialized='view') }}
+
 -- Grano: 1 fila = 1 zona del sistema origen.
--- Objetivo: tipar y normalizar nombres; sin joins/agg en staging.
+-- Objetivo: añadir FKs a región y país usando el mismo id que en stg_regions / stg_countries.
 
-with source as (
-    select * from {{ source('franchise_script', 'ZONES') }}
+with base as (
+    select *
+    from {{ ref('base_franchise_script__zones') }}
 ),
-renamed as (
+
+final as (
     select
-        cast(zone_id as number)           as zone_id,
-        upper(regexp_replace(trim(zone_name), '\\s*#\\d+$', '')) as zone_name,
-        cast(lat as float)                as lat,
-        cast(lon as float)                as lon,
-        cast(population as number)        as population,
-        cast(income_index as float)       as income_index,
+        -- PK natural de la zona
+        zone_id,
+        zone_name,
 
-        -- Mantener en porcentaje 0–100 y renombrar con sufijo _pct
-        try_to_double(unemployment_rate)  as unemployment_rate_pct,
-        CONVERT_TIMEZONE('UTC', CAST(_FIVETRAN_SYNCED AS TIMESTAMP_TZ)) AS date_load_utc,
+        -- Geometría y atributos socioeconómicos
+        lat,
+        lon,
+        population,
+        income_index,
+        unemployment_rate_pct,
+
+        -- IDs compartidos con stg_regions y stg_countries
+        to_varchar(md5(upper(trim(region_name))))  as region_id,
+        to_varchar(md5(upper(trim(country_name)))) as country_id,
+
+        -- Metadatos de carga
+        date_load_utc,
         _fivetran_deleted
-    from source
+    from base
 )
-select * from renamed
 
+select *
+from final

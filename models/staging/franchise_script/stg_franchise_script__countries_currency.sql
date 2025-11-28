@@ -9,8 +9,7 @@ with src as (
 )
 
 select
-    md5(country_name)       as country_id,
-    country_name     as country_name,
+    to_varchar(md5(country_name)) as country_id,
     currency_code,
     currency_name
 from src

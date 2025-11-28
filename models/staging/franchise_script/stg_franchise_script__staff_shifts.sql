@@ -17,7 +17,6 @@ with b as (
 select
   staff_id,
   store_id,
-  -- si hay texto -> id; si no hay -> null
   iff(role_name is null or trim(role_name) = '',
       null,
       to_varchar(md5(upper(trim(role_name))))

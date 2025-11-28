@@ -38,7 +38,7 @@ models:
       - name: store_name
         description: "Official store name."
       - name: zone_id
-        description: "Zone identifier."
+        description: "Zone identifier (natural key from source)."
         tests: [not_null]
       - name: lat
         description: "Latitude."
@@ -139,23 +139,65 @@ models:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: ["zone_id", "day"]
 
-  - name: base_franchise_script__zones_hierarchy
-    description: "Typed and normalized view over the zones hierarchy seed (zone -> region -> country)."
+  - name: base_franchise_script__zones
+    description: "Base table for zones (1:1 with source ZONES). Typing and name normalization only. Grain: zone_id."
     columns:
-      - name: zone_name_clean
-        description: "Canonical zone name used to join with stg_franchise_script__zones.zone_name."
+      - name: zone_id
+        description: "Zone identifier (natural key from source)."
         tests:
           - not_null
           - unique
 
-      - name: region_name
-        description: "Nombre normalizado de la comunidad autónoma (región)."
+      - name: zone_name
+        description: "Canonical zone name (UPPER, trimmed, without synthetic suffixes)."
         tests:
           - not_null
+
+      - name: region_name
+        description: "Normalized region name (UPPER + TRIM) coming from the generator."
 
       - name: country_name
-        description: "Nombre normalizado del país."
+        description: "Normalized country name (UPPER + TRIM) coming from the generator."
+
+      - name: lat
+        description: "Latitude of the zone centroid."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -90 and 90"
+
+      - name: lon
+        description: "Longitude of the zone centroid."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between -180 and 180"
+
+      - name: population
+        description: "Population of the zone."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: income_index
+        description: "Relative income index for the zone."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+
+      - name: unemployment_rate_pct
+        description: "Unemployment rate in percent (0–100)."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+
+      - name: date_load_utc
+        description: "UTC load timestamp derived from _FIVETRAN_SYNCED."
         tests:
           - not_null
 
-
+      - name: _fivetran_deleted
+        description: "Soft delete flag; null in our synthetic data."
